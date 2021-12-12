@@ -1,0 +1,680 @@
+
+▩ knn 알고리즘이란 무엇인가 ?
+
+그림 PPT
+
+K nearest neighbor 의 약자로 k 개의 최근접 이웃이라는 뜻입니다.
+머신러닝 지도학습의 분류에 해당하는 알고리즘입니다.
+
+새로 들어온 데이터가 기존 데이터의 그룹에 어느 그룹에 속하는지 찾을 때
+거리가 가까운 데이터의 그룹을 자기 그룹으로 선택하는 아주 간단한 알고리즘입니다.
+
+▩ knn 알고리즘 장단점
+
+	- 장점 : 단순하고 효율적이다. 모델을 훈련시키지 않습니다.
+	- 단점 : 적절한 k 값을 모델 개발자가 직접 알아내야 합니다.
+
+▩ knn 의 원리
+
+새로 들어온 데이터가 기존 데이터 중에서 ( 악성종양, 양성종양 )
+어느 데이터에 더 인접해 있는지 거리를 계산해서 가장 가까운 거리에 있는
+데이터를 자기의 이웃으로 선택하는 것
+
+##################################################################################################################
+
+■ knn 머신러닝 알고리즘을 이용하여 유방암 데이터 분류 데이터 분석
+
+# 1단계 : 데이터 수집        ---------------> 데이터 불러오기, 데이터에 대한 출처와 설명
+
+# 2단계 : 데이터 탐색        ---------------> 결측치, 이상치, 명목형 데이터 여부 확인,
+									데이터 분포확인 ( 히스토그램 + 정규분포 )
+									데이터 정규화 또는 표준화 작업 수행 
+									
+# 3단계 : 데이터 모델 훈련과 분류 : 모델설정, 모델훈련 , 모델예측 ( 분류 )
+
+# 4단계 : 모델 성능 평가 : 이원교차표를 통해서 정확도 화인
+						정확도외에 다른 성능 척도 : 민감도, 특이도, 정밀도, 재현율, ROC 곡선 AUC 수치 
+						
+# 5단계 : 모델 성능 개선 : 모델의 예측능력, 분류능력을 높이는 작업
+
+##################################################################################################################
+
+▩ 1단계 : 데이터 수집
+
+위스콘신 유방암 진단 데이터셋이며 이 데이터는 569 개의 암 조직검사 예시가 들어있으며,
+각 예시는 32개의 특징을 갖는다. 그 특징은 디지털 이미지에 존재하는 세포핵의 특성을 나타낸다.
+
+		독립변수                                                         종속변수 ( 정답 )
+
+반지름                   조밀성                                             diagnosis : 양성(B) , 악성 (M)
+질감                        오목함
+둘레                        오목점
+넓이                        대칭성
+매끄러움               프랙탈 차원
+
+# 데이터 게시판 54번
+
+wbcd <- read.csv("wisc_bc_data.csv")
+
+nrow(wbcd)                  # 행의 갯수 : 569개
+ncol(wbcd)                     # 열의 갯수 : 32개
+
+전부 숫자 데이터이고 정답 데이터만 문자형이다. 즉, knn 으로 분류하기 딱 좋은 데이터이다.
+
+▩ 2단계 : 데이터 탐색
+
+	1. 정답에 해당하는 라벨 컬럼의 데이터 분포를 확인합니다.
+
+table(wbcd$diagnosis)
+
+# 
+  B   M 
+357 212 
+
+악성 데이터와 양성 데이터가 50대 50으로 분포되어있는것이 가장 이상적이나 
+보통은 그렇게 분포되어 있지 않기 때문에 특별한 방법을 통해서 악성 데이터( 모자란 데이터 )를
+늘려줄 필요가 있습니다. ( 모델의 예측능력이 떨어질때 고려하면 됩니다. )
+
+	2. 이상치를 확인합니다.
+
+install.packages('outliers')
+library(outliers)
+
+grubbs.flag <- function(x) {
+  outliers <- NULL
+  test <- x
+  grubbs.result <- grubbs.test(test)
+  pv <- grubbs.result$p.value
+  while(pv < 0.05) {
+    outliers <- c(outliers,as.numeric(strsplit(grubbs.result$alternative," ")[[1]][3]))
+    test <- x[!x %in% outliers]
+    grubbs.result <- grubbs.test(test)
+    pv <- grubbs.result$p.value
+  }
+  return(data.frame(X=x,Outlier=(x %in% outliers)))
+}
+
+colnames(wbcd)                                   # 컬럼명 확인
+
+a <- grubbs.flag( wbcd$radius_mean )           # wbcd 의 radius_mean 컬럼에 이상치가 있는지 확인하기 위해
+										# 데이터 프레임을 생성
+a[ a$Outlier == TRUE,  ]                              # a 데이터 프레임의 Outlier 컬럼이 TRUE 인 데이터를 찾는다.
+
+for ( i in 3:length(colnames(wbcd)) ) {
+									a <- grubbs.flag( wbcd[ , colnames(wbcd)[i] ] )
+									b <- a[ a$Outlier == TRUE,  'Outlier' ]
+									print( paste( colnames(wbcd)[i], '-------->', length(b) ) )
+									}
+	
+	3. 결측치를 확인합니다.
+
+colSums(is.na(wbcd))
+
+모든 컬럼들이 전부 결측치가 없는 데이터 입니다.
+결측치나 이상치가 많은 컬럼은 체크해놓자!!
+
+
+	4. 히스토그램 그래프 + 정규분포 그래프를 통해서 데이터들이 정규성을 보이는지 확인합니다.
+
+hist(wbcd$dimension_worst)
+
+install.packages("psych")
+library(psych)
+
+# 이상치가 많은 컬럼들을 추려서 그려보자
+
+pairs.panels(wbcd[ c('dimension_se', 'symmetry_se', 'perimeter_se') ])        # 히스토그램, 정규분포, 상관계수까지 출력
+
+# 이상치가 많은 컬럼에 대해서 히스토그램 그래프와 정규분포 그래프를 같이 확인을 해보니
+   오른쪽으로 꼬리가 긴 데이터의 분포를 이루고 있습니다.
+
+
+
+▩ 3단계 : 데이터로 모델 훈련
+
+	1. 데이터의 구조를 확인하여 라벨( 정답 ) 컬럼이 factor 인지 확인합니다.
+
+str(wbcd)                                 #  $ diagnosis        : chr
+
+wbcd <- read.csv("wisc_bc_data.csv", stringsAsFactors = TRUE)
+
+str(wbcd)                                   #  $ diagnosis        : Factor
+ 
+
+	2. 데이터를 양성과 악성이 잘 섞일 수 있도록 데이터를 섞어줍니다.
+	( 훈련과 테스트 중 한쪽에 양성이 몰리고 악성이 몰릴 수 있으니까 )
+
+sample(10)                       #  [1]  1 10  7  5  4  2  9  8  6  3
+
+wbcd_shuffle <- wbcd[ sample(nrow(wbcd)) ,   ]  
+wbcd_shuffle
+
+	3. 훈련할때 필요한 컬럼만 선택합니다.
+
+wbcd_shuffle2 <- wbcd_shuffle[    ,  c( -1, -2 )  ]                # 첫번째, 두번째 컬럼만 빼기  (환자번호 , 정답 컬럼)
+
+	4. 컬럼들의 단위가 다 다르므로 데이터를 정규화 합니다.
+	
+normalize <- function(x) {
+						return (  ( x-min(x) ) / ( max(x) - min(x) )  )
+						}
+
+wbcd_n <- as.data.frame( lapply(wbcd_shuffle2, normalize) )               # lapply = map 과 같은 역할
+
+summary(wbcd_n)              # 모든 값들이 0 ~1 사이로 바뀜
+
+
+
+	5. 전체 569 개의 행의 데이터를 훈련( 공부 ) 데이터와 테스트 ( 시험 ) 데이터로 나눠줘야 합니다.
+	
+# 90 퍼센트는 훈련데이터, 테스트는 10프로
+
+nrow(wbcd_n)           # 569
+
+n_90 <- round( 0.9*nrow(wbcd_n) )
+n_90                             # 512
+
+wbcd_train <- wbcd_n[ 1:512 , ]                            # 훈련데이터 구성
+wbcd_test <- wbcd_n[ 513:569, ]                           # 테스트 데이터 구성
+
+nrow(wbcd_train)                     # 512    ,    문제지
+nrow(wbcd_test)                      # 57      ,     시험
+
+	6. 정답도 훈련과 테스트로 나눕니다.
+
+
+wbcd_train_label <- wbcd_shuffle[1:512 , 2]
+wbcd_test_label <- wbcd_shuffle[513:569 , 2]
+
+length( wbcd_train_label )              # 512 ,벡터라서 length로 확인
+length(wbcd_test_label)                    # 57
+
+*데이터 준비 완료!!
+
+	7. 512 개의 훈련 데이터와 훈련 데이터의 정답으로 거리계산한 데이터로 테스트 데이터 57개를 분류합니다.
+	512로 훈련시키고 57개를 시험쳐보는거 까지 한번에 !!
+	
+
+install.packages("class")                    # knn 구현을 위한 패키지
+library(class)
+
+result1 <- knn( train = wbcd_train, test = wbcd_test, cl = wbcd_train_label, k = 1 )
+result1
+
+#
+ [1] B M B B B M M B M B B B B M M B M M M B M B B M B M B M B B M B B B B M M M B B B
+[42] B B M B M M M M B M B B M M B B
+Levels: B M
+
+wbcd_test_label
+
+#
+ [1] B M M B B M M B M B B B B M M B M M M B M B B M B M B M B B M B B B B M M M B B B
+[42] B B M B M M M M B M B B M M B B
+Levels: B M
+
+
+▩ 4단계 : 모델 성능 평가
+
+result1 == wbcd_test_label
+sum(result1 == wbcd_test_label)
+sum(result1 == wbcd_test_label) /57 * 100                     # 98,24561
+
+※ 왜 정확도가 자리마다 다 다르게 나오는 이유는 ?
+     
+    데이터를 shuffle 할때 sample 함수를 사용했는데 이때 자리마다 섞는 순서가 달랐다.
+    자리마다 똑같은 순서로 섞어지게 했을 필요가 있습니다.
+    sample(10)은 할때마다 다르게 나오고 사람마다 다르기때문
+
+    똑같이 나오게 하는법
+     set.seed(1)         # seed 값은 숫자 1번부터 ~~~~ 아주 큰 수를 입력하면 되는데 똑같은 seed 값을 입력하면
+				  # 어느자리에서든 같은 패턴으로 숫자가 섞이게 됩니다.
+     sample(10)           # [1]  9  4  7  1  2  5  3 10  6  8
+
+##################################################################################################################
+
+## 위의 유방암을 판정하는 분류 모델을 다시 똑같이 만드는데 이번에는 seed 값을 1로 주고 만들고 정확도를 확인하시오 !
+
+wbcd <- read.csv("wisc_bc_data.csv", stringsAsFactors = TRUE) 
+
+set.seed(1)
+wbcd_shuffle <- wbcd[ sample(nrow(wbcd)) ,   ]  
+
+wbcd_shuffle2 <- wbcd_shuffle[    ,  c( -1, -2 )  ]                # 첫번째, 두번째 컬럼만 빼기  (환자번호 , 정답 컬럼)
+
+normalize <- function(x) {
+						return (  ( x-min(x) ) / ( max(x) - min(x) )  )
+						}
+
+wbcd_n <- as.data.frame( lapply(wbcd_shuffle2, normalize) )               # lapply = map 과 같은 역할
+
+wbcd_train <- wbcd_n[ 1:512 , ]                            # 훈련데이터 구성
+wbcd_test <- wbcd_n[ 513:569, ]                           # 테스트 데이터 구성
+
+wbcd_train_label <- wbcd_shuffle[1:512 , 2]
+wbcd_test_label <- wbcd_shuffle[513:569 , 2]
+
+library(class)
+
+result1 <- knn( train = wbcd_train, test = wbcd_test, cl = wbcd_train_label, k = 1 )
+
+sum(result1 == wbcd_test_label) /57 * 100                     # 96.49123
+
+▩ 5단계. 모델 개선
+
+k 값이 1일때 정확도 96.49123 가 나왔습니다.
+환자 100명중에 96명은 잘 판정하고 4명을 잘못판정하는 분류 모델입니다.
+
+문제 248. 정확도를 더 올리기 위한 k 값을 알아내시오 ~
+
+k 값을 바꾸면서 입력해보자
+1 는 96.49123
+2는 98.24561
+3부터 100이 나온다.
+for 문 돌려서 알아보자 !
+
+temp <- c()
+
+for (i in c(seq(1,300,2))) {
+result1 <- knn( train = wbcd_train, test = wbcd_test, cl = wbcd_train_label, k = i )
+
+temp <- append(temp, sum(result1 == wbcd_test_label) /57 * 100)
+}
+
+temp
+
+plot( temp, type = 'o', col = 'blue', ylim = c (0,105) )  
+
+##################################################################################################################
+
+## 와인 데이터( wine.csv ) 데이터를 분류하는 knn 머신러닝 모델을 생성하시오 ! 정답 컬럼은 Type 입니다.
+
+R )
+
+wine <- read.csv("wine.csv", stringsAsFactors = TRUE) 
+# nrow(wine)               # 178
+# ncol(wine)              # 14
+
+# table(wine$Type)
+
+# t1 t2 t3 
+# 59 71 48 
+
+set.seed(1)
+wine_shuffle <- wine[ sample(nrow(wine)) ,   ]  
+
+wine_shuffle2 <- wine_shuffle[    ,  -1  ]                # 첫번째 컬럼만 빼기  (정답 컬럼)
+
+normalize <- function(x) {
+						return (  ( x-min(x) ) / ( max(x) - min(x) )  )
+						}
+
+wine_n <- as.data.frame( lapply(wine_shuffle2, normalize) )               # lapply = map 과 같은 역할
+
+
+# n_90 <- round( 0.9*nrow(wine_n) )                 # 160
+
+wine_train <- wine_n[ 1:160 , ]                            # 훈련데이터 구성
+wine_test <- wine_n[ 161:178, ]                           # 테스트 데이터 구성
+
+# nrow(wine_train)         # 160
+# nrow(wine_test)            # 18
+
+wine_train_label <- wine_shuffle[1:160 , 1]
+wine_test_label <- wine_shuffle[161:178 , 1]
+
+# length(wine_train_label)         # 160
+# length(wine_test_label)          # 18
+
+library(class)
+
+result1 <- knn( train = wine_train, test = wine_test, cl = wine_train_label, k = 1 )
+
+sum(result1 == wine_test_label) /18 * 100                     # 94.44444
+
+
+# 여러 k 값에서 정확도 알아보기 
+for (i in c(seq(1,150,2))){
+  result1 <- knn(wine_train, wine_test, cl=wine_train_label, k=i)
+  a <- sum(result1 == wine_test_label)/length(wine_test_label)*100
+  print(paste(i,' --------> ',a))  }
+
+# 이원교차표 확인
+
+library(gmodels)
+
+CrossTable( x= wine_test_label, y = result1, prop.chisq = FALSE )
+
+
+▩ 정확도외에 모델을 평가하는 다른 방법
+
+	1. 유방암 데이터의 예측 결과에 대한 이원교차표를 출력하시오
+
+# 유방암데이터 코드 끝까지 실행후
+
+library(gmodels)
+
+CrossTable( x= wbcd_test_label, y = result1, prop.chisq = FALSE )
+				↓                                ↓
+			     실제값                       예측값
+
+
+
+
+Positive ( 관심범주 o )     -------------> 암환자 
+Negative  ( 관심범주 x )   -------------> 정상환자 
+
+TN = True Negative    ------------> 관심범주로 아닌것으로 예측했는데 관심범주가 아닌것으로 잘 맞춘것
+TP = True Positive      -------------> 관심범주로 예측했는데 관심범주로 잘 맞춘것
+FN = False Negative   -------------> 관심범주로 아닌것으로 예측했는데 관심범주로 아닌것으로 못맞춘것
+FP = False Positive     -------------> 관심범주로 예측했는데 관심범주로 못맞춘것
+
+                                     예측
+                          정상                 암 
+실제       정상           32(TN)               2 (FP)
+           암              0(FN)                23(TP)
+
+※ 이원 교차표 설명
+
+Positive  -----> 관심범주 (암, 스팸메일)
+
+TP : True 는 잘 판단했다. Positive : 암환자로
+					↓
+			암환자로 잘 판단했다.
+					↓
+			(암환자를) 암환자로 잘 판단했다.
+
+FP : False 는 잘못 판단했다. Positive : 암환자로
+					↓
+			암환자로 잘못판단했다.
+					↓
+			(정상환자를) 암환자로 잘못판단했다.
+
+TN : True 는 잘 판단했다. Negative : 정상환자로
+					↓
+			정상환자로 잘 판단했다.
+					↓
+			(정상환자를) 정상환자로 잘판단했다.
+
+FN : False 는 잘못판단했다. Negative : 정상환자로
+					↓
+			정상환자로 잘못판단했다.
+					↓
+			(암환자를) 정상환자로 잘못판단했다.
+
+
+※ 
+
+                      (FN)                       (FP) 
+k 값          거짓부정            거짓긍정                   부정확하게 분류된 백분율
+1                      1                            3                                                  4%
+5                      2                            0                                                  2%
+11                    3                            0                                                  3%
+15                    3                            0                                                  3%
+21                    2                            0                                                  2%
+27                    4                            0                                                  4%
+
+
+FN이 가장 중요하고 제일 줄여아한다. ( 의료계에서는 )
+그래서 FN이 1인걸 고르려고하니 FP가 3이네,,이런,,
+
+
+
+
+
+##################################################################################################################
+
+
+
+■ 판다스로 유방암 판정 KNN 모델 생성하기
+
+
+Pandas )
+
+# 1. 데이터 로드합니다.
+
+import pandas as pd
+wbcd = pd.read_csv("c:\\data\\wisc_bc_data.csv")
+
+# 판다스는 R 과 다르게 stringsAsFactors = TRUE 를 지정하지 않아도 됩니다.
+
+# 2. 데이터를 확인합니다.
+
+wbcd.info()            # 컬럼명과 데이터 타입을 확인합니다.
+print( wbcd.shape )         # 몇행 몇열 인가? , (569, 32)
+print(wbcd.describe())            # R 에서의 summary() 와 같은 함수
+
+# 3. 결측치를 확인합니다.
+
+print( wbcd.isnull().sum() )
+
+# 4. 이상치를 확인합니다.
+
+def outlier_value(x):
+
+    for i in list(x.describe ().columns):                                # x.columns[x.dtypes =='float64']
+        Q1 = x[i].quantile(0.25)
+        Q3 = x[i].quantile(0.75)
+        IQR = Q3 - Q1
+        upper_bound = Q3 + (IQR*5)
+        lower_bound = Q1 - (IQR*5)
+        a = x.loc[ (x[i] > upper_bound ) | ( x[i]< lower_bound ) , i ].count()
+        b = i
+        print( '{0:<10} : {1:>5} 건'.format(  b , a  ) )
+        
+outlier_value(wbcd)
+
+# 설명 : area_se 와 dimension_se 의 이상치가 보이므로 모델평가후에 정확도를 더 높이기 위해서
+#             이 두 컬럼의 이상치를 중앙값으로 치환해볼 필요가 있습니다.
+
+
+# 5. 명목형 데이터가 있는지 확인합니다.
+
+wbcd.info()             # label 만 object 나머지는 수치형
+
+# 6. 데이터를 정규화합니다.
+
+from sklearn.preprocessing import MinMaxScaler
+
+wbcd2 = wbcd.iloc[     :    ,  2:    ]        # 환자번호와 diagnosis를 컬럼을 제외 , 행열번호로 할땐 iloc 사용
+# print(wbcd2) 
+
+scaler = MinMaxScaler()
+
+scaler.fit(wbcd2)                   # 최대 최소법으로 데이터를 계산합니다.
+
+wbcd2_scaled = scaler.transform( wbcd2 )            # 위에서 계산한 내용으로 데이터를 변환해서 wbcd2_scaled 담습니다.
+# print(wbcd2_scaled)
+
+# print ( wbcd2_scaled.shape )         # (569, 30)   , numpy array 형태로 변경되었습니다.
+
+y = wbcd['diagnosis'].to_numpy()        # 정답 데이터를 numpy array 로 변경합니다.
+# print(y)
+
+
+
+# 7. 훈련데이터와 테스트데이터로 분리합니다. ( 훈련 90% , 테스트 10% )
+
+from sklearn.model_selection import train_test_split
+
+x_train , x_test, y_train, y_test = train_test_split( wbcd2_scaled, y, test_size = 0.1 , random_state = 1 )    
+
+# 자동으로 shuffle 됨,  test_size = 0.1 은 테스트 10% 한다는것 
+# random_state = 1 은 seed =1 ,  seed 값을 정해주는 이유 : 어느 자리에서든 동일한 정확도를 보이는 모델을 만들기 위해서
+# x_train : 훈련데이터  , x_test : 테스트 데이터 
+# y_train : 훈련데이터의 정답 , y_test : 테스트 데이터의 정답
+
+# print( x_train.shape )      # (512, 30)
+# print( x_test.shape )         # (57, 30)
+# print( y_train.shape )         # (512,)
+# print( y_test.shape )          # (57,)
+
+# 8. 모델을 설정합니다.
+
+from sklearn.neighbors import KNeighborsClassifier
+
+model = KNeighborsClassifier( n_neighbors = 5  )                 # knn 모델생성, k = 5 넣어준 모델
+
+# 9. 모델을 훈련시킵니다.
+
+model.fit(x_train, y_train)                  # 훈련
+
+# 10. 훈련된 모델로 테스트 데이터를 예측합니다.
+
+result = model.predict( x_test )
+# print(result)
+
+# 11. 모델을 평가합니다.
+
+print ( sum( y_test == result ) / 57 *100 )           # 98.24561403508771
+
+또는
+
+from sklearn.metrics import accuracy_score
+
+acurracy = accuracy_score( y_test , result )          # 실제값, 예측값 넣으면 정확도가 나옴
+print ( acurracy )                                                # 0.9824561403508771
+
+# 12. 모델의 성능을 높입니다.
+
+from sklearn.metrics import confusion_matrix
+
+a = confusion_matrix( y_test, result )
+print(a)
+
+# [[43  0]
+#  [ 1 13]]
+
+# 뭐가 TN, FP, FN, TP 인지 알아보자
+
+tn, fp, fn, tp = confusion_matrix( y_test, result ).ravel()
+
+print( tn, fp, fn, tp )          # 43 0 1 13
+
+# [[43  0]                   TN   FP
+#  [ 1 13]]                  FN   TP
+
+
+##################################################################################################################
+## FN 를 0 으로 만들면서 정확도가 가장 좋은 K 값을 무엇인지 알아내세요 ~
+
+for i in range(1,10):
+    for k in range(1,51,2):
+
+        import pandas as pd
+        wbcd = pd.read_csv("c:\\data\\wisc_bc_data.csv")
+
+        from sklearn.preprocessing import MinMaxScaler
+ 
+        wbcd2 = wbcd.iloc[     :    ,  2:    ]        # 환자번호와 diagnosis를 컬럼을 제외 , 행열번호로 할땐 iloc 사용
+        # print(wbcd2) 
+
+        scaler = MinMaxScaler()
+
+        scaler.fit(wbcd2)                   # 최대 최소법으로 데이터를 계산합니다.
+
+        wbcd2_scaled = scaler.transform( wbcd2 )            # 위에서 계산한 내용으로 데이터를 변환해서 wbcd2_scaled 담습니다.
+        # print(wbcd2_scaled)
+
+        # print ( wbcd2_scaled.shape )         # (569, 30)   , numpy array 형태로 변경되었습니다.
+
+        y = wbcd['diagnosis'].to_numpy()        # 정답 데이터를 numpy array 로 변경합니다.
+        # print(y)
+
+        from sklearn.model_selection import train_test_split
+
+        x_train , x_test, y_train, y_test = train_test_split( wbcd2_scaled, y, test_size = 0.1 , random_state = i )  
+
+        from sklearn.neighbors import KNeighborsClassifier
+
+        model = KNeighborsClassifier( n_neighbors = k  )                 # knn 모델생성, k = i 넣어준 모델
+
+        model.fit(x_train, y_train)                  # 훈련
+        result = model.predict( x_test )
+
+        from sklearn.metrics import accuracy_score
+  
+        acurracy = accuracy_score( y_test , result )          # 실제값, 예측값 넣으면 정확도가 나옴                                            
+
+        from sklearn.metrics import confusion_matrix
+
+        tn, fp, fn, tp = confusion_matrix( y_test, result ).ravel()
+
+        if fn == 0 :
+            print('random_state =', k, ', k의 값 =', i)
+            print ( acurracy )                                                
+            print( tn, fp, fn, tp )         
+
+##################################################################################################################
+
+## 와인데이터 wine.csv 를 가지고 와인의 종류를 분류하는 머신러닝 모델을 파이썬으로 구현하시오 !
+
+import pandas as pd
+wine = pd.read_csv("c:\\data\\wine.csv")
+
+from sklearn.preprocessing import MinMaxScaler
+ 
+wine2 = wine.iloc[     :    ,  1:    ]        # Type 컬럼을 제외 , 행열번호로 할땐 iloc 사용
+
+scaler = MinMaxScaler()
+
+scaler.fit(wine2)                   # 최대 최소법으로 데이터를 계산합니다.
+
+wine2_scaled = scaler.transform( wine2 )    # 위에서 계산한 내용으로 데이터를 변환해서 wine2_scaled 담습니다.
+
+y = wine['Type'].to_numpy()        # 정답 데이터를 numpy array 로 변경합니다.
+
+from sklearn.model_selection import train_test_split
+
+x_train , x_test, y_train, y_test = train_test_split( wine2_scaled, y, test_size = 0.1 , random_state = 1 )  
+
+from sklearn.neighbors import KNeighborsClassifier
+
+model = KNeighborsClassifier( n_neighbors = 3  )                 # knn 모델생성, k = 넣어준 모델
+
+model.fit(x_train, y_train)                  # 훈련
+result = model.predict( x_test )
+
+from sklearn.metrics import accuracy_score
+
+acurracy = accuracy_score( y_test , result )          # 실제값, 예측값 넣으면 정확도가 나옴                                            
+
+from sklearn.metrics import confusion_matrix
+
+a = confusion_matrix( y_test, result )
+print(a)
+print( acurracy )
+
+
+# R 의 CrossTable로 봤을 때  ( 난수가 달라서 결과 다름 )
+
+                | result1 
+wine_test_label |        t1 |        t2 |        t3 | Row Total | 
+----------------|-----------|-----------|-----------|-----------|
+             t1 |         7 |         0 |         0 |         7 | 
+                |     1.000 |     0.000 |     0.000 |     0.389 | 
+                |     0.875 |     0.000 |     0.000 |           | 
+                |     0.389 |     0.000 |     0.000 |           | 
+----------------|-----------|-----------|-----------|-----------|
+             t2 |         1 |         8 |         0 |         9 | 
+                |     0.111 |     0.889 |     0.000 |     0.500 | 
+                |     0.125 |     1.000 |     0.000 |           | 
+                |     0.056 |     0.444 |     0.000 |           | 
+----------------|-----------|-----------|-----------|-----------|
+             t3 |         0 |         0 |         2 |         2 | 
+                |     0.000 |     0.000 |     1.000 |     0.111 | 
+                |     0.000 |     0.000 |     1.000 |           | 
+                |     0.000 |     0.000 |     0.111 |           | 
+----------------|-----------|-----------|-----------|-----------|
+   Column Total |         8 |         8 |         2 |        18 | 
+                |     0.444 |     0.444 |     0.111 |           | 
+----------------|-----------|-----------|-----------|-----------|
+
+
+
+
+
+
+
+
+
