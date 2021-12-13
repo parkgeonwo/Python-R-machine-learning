@@ -1,0 +1,9 @@
+patient_id,chills,runny_nose,headache,fever,flue
+1,Y,N,MILD,Y,N
+2,Y,Y,NO,N,Y
+3,Y,N,STRONG,Y,Y
+4,N,Y,MILD,Y,Y
+5,N,N,NO,N,N
+6,N,Y,STRONG,Y,Y
+7,N,Y,STRONG,N,N
+8,Y,Y,MILD,Y,Y
