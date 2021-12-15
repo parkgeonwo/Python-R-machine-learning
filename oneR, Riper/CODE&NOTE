@@ -1,0 +1,577 @@
+
+▩ 규칙 기반 알고리즘
+		1. oneR 알고리즘
+		2. Riper 알고리즘
+
+▩ 1R 알고리즘
+
+	하나의 사실(조건)만 가지고 간단하게 데이터를 분류하는 알고리즘 입니다.
+	하나의 사실만 가지고 분류를 하다 보니 간단하지만 오류가 많습니다.
+	
+	예: 가슴통증의 유무에 따라 심장질환이 있는지 분류하고자 하면
+	      가슴통증 하나만 보고 심장질환이 있다고 분류하기에는 오류가 많아집니다.
+	      왜냐하면 식도염, 폐질환도 가슴통증이기 때문입니다.
+	
+
+▩ Riper 알고리즘
+
+	복수개의 사실(조건)을 가지고 분류하는 알고리즘 입니다.
+	
+	예: 가슴통증이 있으면서 호흡곤란이 있으면 심장질환이다.
+	
+	알고리즘이 데이터를 보고 패턴을 발견합니다. ( 조건을 발견합니다. )
+	
+	예 : 독버섯 분류 조건을 발견한 알고리즘 p 245
+
+
+▩ 독버섯 데이터와 식용버섯 데이터를 oneR 알고리즘으로 분류하는 실습 ( p237 )
+
+# 1.버섯 데이터 로드한다.
+# 2. 결측치를 확인합니다.
+# 3. 이상치를 확인합니다.
+# 4. 훈련 데이터와 테스트 데이터로 나눕니다.
+# 5. 정규화 작업 수행
+# 6. 훈련 데이터로 모델을 훈련시킵니다.
+# 7. 훈련된 모델에 테스트 데이터를 넣어서 예측합니다.
+# 8. 모델을 평가합니다.
+
+
+# 1.버섯 데이터 로드한다.
+
+mush <- read.csv("mushrooms.csv", stringsAsFactors = T)
+
+데이터 설명 : UCI 머신러닝 저장소에서 제공하는 데이터이며 23종의 버섯과
+			  8124개의 버섯샘플에 대한 정보가 포함되어 있습니다.
+			  버섯샘플 22개의 특징은 갓모양, 갓색깔, 냄새, 주름크기, 주름색, 줄기모양, 서식지와 같은
+			  특징이 있습니다.
+
+# 2. 결측치를 확인합니다.
+
+colSums(is.na(mush))
+
+# 3. 이상치를 확인합니다.
+
+# 전부 명목형 데이터 입니다.
+
+# 4. 훈련 데이터와 테스트 데이터로 나눕니다.
+
+library(caret)
+set.seed(1)
+train_num <- createDataPartition( mush$type, p = 0.8 , list = F )
+
+train_data <- mush[train_num, ]         # 훈련데이터 80% 구현
+test_data <- mush[-train_num, ]         # 테스트데이터 20% 구현
+
+nrow(train_data)      # 6500
+nrow(test_data)        # 1624
+
+# 5. 정규화 작업 수행
+
+# 명목형 데이터 이므로 정규화 작업을 할 필요가 없습니다.
+
+# 6. 훈련 데이터로 모델을 훈련시킵니다. ( oneR 알고리즘 )
+
+install.packages('OneR')    
+library(OneR)                      # 한가지 조건만 가지고 분류하는 알고리즘
+					       # 장점 : 간단하다, 단점 : 정확하게 분류하지 못한다.
+
+model <- OneR( type~. , data = train_data )
+
+# 문법 : model <- OneR(정답컬럼~모든컬럼 , data = 데이터 프레임 )
+
+model               # 알고리즘이 데이터에서 발견한 패턴을 확인할 수 있습니다.
+
+Rules:                                            # 버섯 냄새 한가지만 가지고 다음과 같이 분류했습니다.
+If odor = a then type = e
+If odor = c then type = p
+If odor = f then type = p
+If odor = l then type = e
+If odor = m then type = p
+If odor = n then type = e
+If odor = p then type = p
+If odor = s then type = p
+If odor = y then type = p
+
+summary(model)
+
+Pearson's Chi-squared test:
+X-squared = 6151.1, df = 8, p-value < 2.2e-16          # 2.2 * 0.00..001 ( 소수점아래 0이 16개 )
+
+귀무가설 : 냄새로 독버섯과 정상버섯을 분류할 수 없다.
+대립가설 : 냄새로 독버섯과 정상버섯을 분류할 수 있다.
+
+p-value 값이 2.2e-16 으로 매우 작으므로 대립가설을 채택할 충분할 근거가 있다.
+
+
+# 7. 훈련된 모델에 테스트 데이터를 넣어서 예측합니다.
+
+result <- predict( model, test_data[ , -1] )           # 라벨 컬럼뺀 test_data
+result
+
+
+# 8. 모델을 평가합니다.
+
+sum( test_data[  ,1 ] == result ) / nrow(test_data)       # [1] 0.9815271
+
+# 9. 이원교차표를 확인해서 FN 값이 몇개가 있는지 확인합니다.
+
+library(gmodels)
+
+CrossTable(test_data[ , 1], result)
+
+※ 설명 : 정확도는 98 % 이나 FN 값이 높아서 FN 값을 줄일 수 있도록 개선할 필요가 있습니다.
+
+▩ OneR 알고리즘이 어떻게 냄새로 버섯을 분류할려고 했는가 ?
+
+	냄새가 다른 컬럼(변수)들 보다 분류를 하는데 있어서 더 중요한 컬럼이었나 ?
+	
+### 버섯 데이터의 컬럼들의 정보획득량을 출력하세요 ~
+
+library(FSelector)
+
+mush <- read.csv("mushrooms.csv", stringsAsFactors = T)
+wg <- information.gain( type ~. , mush, unit = 'log2' )
+wg
+
+str(w1)          # 데이터 프레임
+
+### orderBy 함수를 이용해서 정보획득량이 높은것부터 출력되게 하시오 !
+
+library(doBy)
+orderBy( ~-attr_importance, wg )         # odor 가 정보획득량이 가장 높음
+
+※ 설명 : odor 가 독버섯과 식용버섯을 분류하는데 가장 정보를 많이주는 컬럼입니다.
+		그래서 OneR 알고리즘이 냄새(odor) 하나만 가지고 분류를 한 것 입니다.
+		
+
+▩ 규칙 기반 알고리즘 중 하나인 Riper 알고리즘으로 독버섯을 분류하기 ( p 243 )
+
+# 1. 데이터를 로드합니다.
+
+mush <- read.csv("mushrooms.csv", stringsAsFactors = T)
+
+# 2. 결측치 확인
+
+colSums(is.na(mush))
+
+# 3. 훈련데이터와 테스트 데이터로 분리합니다.
+
+library(caret)
+set.seed(1)
+train_num <- createDataPartition( mush$type, p = 0.8 , list = F )
+
+train_data <- mush[train_num, ]         # 훈련데이터 80% 구현
+test_data <- mush[-train_num, ]         # 테스트데이터 20% 구현
+
+nrow(train_data)      # 6500
+nrow(test_data)        # 1624
+
+# 4. 훈련데이터로 모델을 훈련시킵니다.
+
+install.packages("RWeka")
+library(RWeka)
+
+model2 <- JRip( type~. , data = train_data )
+model2                                                                  # 책 245p 에 아래의 내용에 대한 해석이 나옵니다.
+
+(odor = f) => type=p (1732.0/0.0)
+(gill_size = n) and (gill_color = b) => type=p (921.0/0.0)
+(gill_size = n) and (odor = p) => type=p (205.0/0.0)
+(odor = c) => type=p (155.0/0.0)
+(spore_print_color = r) => type=p (52.0/0.0)                 # 버섯 머리 아래쪽을 종이에 찍은 색
+(stalk_surface_above_ring = k) and (gill_spacing = c) => type=p (58.0/0.0)
+(habitat = l) and (cap_color = w) => type=p (7.0/0.0)
+(stalk_color_above_ring = y) => type=p (3.0/0.0)
+ => type=e (3367.0/0.0)
+
+summary(model2)
+
+=== Confusion Matrix ===
+
+    a    b   <-- classified as
+ 3367    0 |    a = e
+    0 3133 |    b = p
+
+※ 설명 : 위의 작은 이원교차표에서 훈련데이터에 대해서 100% 정확도를 보여주는 결과가 나타남
+
+# 5. 훈련된 모델에 테스트 데이터를 넣어서 예측을 합니다.
+
+result2 <- predict( model2, test_data[  , -1] )
+result2
+
+# 6. 모델을 평가합니다.
+
+sum(result2 == test_data[ , 1]) / nrow(test_data)            #  1 , length(result2) 로 해도 같은 결과
+
+※ 설명 : 나이브 베이즈 모델  : 정확도 ?
+		OneR 알고리즘 : 98 %
+		Riper 알고리즘 : 100%
+		
+요청하신 머신러닝 데이터 분석의 결과로 선택된 모델은 riper 규칙기반 알고리즘 입니다.
+위의 표와 같이 3개의 머신러닝 모델에서 가장 완벽한 정확도를 보이는 모델을 선택했습니다.
+
+###  명목형 데이터만 있는 독버섯 데이터에서는 Riper 분류 알고리즘이 놀라운 성능을 보였습니다.
+		   이번에는 수치형 데이터만 있는 iris 데이터를 Riper 알고리즘으로 분류했을때도
+		   성능이 잘 나오는지 확인하세요 !
+
+
+# 1. 데이터를 로드합니다.
+
+iris <- read.csv("iris2.csv", stringsAsFactors = T)
+
+# 2. 결측치 확인
+
+colSums(is.na(iris))
+
+# 3. 이상치 확인
+
+library(outliers)
+
+grubbs.flag <- function(x) {
+  outliers <- NULL
+  test <- x
+  grubbs.result <- grubbs.test(test)
+  pv <- grubbs.result$p.value
+  while(pv < 0.05) {
+    outliers <- c(outliers,as.numeric(strsplit(grubbs.result$alternative," ")[[1]][3]))
+    test <- x[!x %in% outliers]
+    grubbs.result <- grubbs.test(test)
+    pv <- grubbs.result$p.value
+  }
+  return(data.frame(X=x,Outlier=(x %in% outliers)))
+}
+
+colnames(iris)                                   # 컬럼명 확인
+
+a <- grubbs.flag( iris$Sepal.Length )           # iris 의 Sepal.Length 컬럼에 이상치가 있는지 확인하기 위해
+										# 데이터 프레임을 생성
+a[ a$Outlier == TRUE,  ]                              # a 데이터 프레임의 Outlier 컬럼이 TRUE 인 데이터를 찾는다.
+
+for ( i in 1:4 ) {
+									a <- grubbs.flag( iris[ , colnames(iris)[i] ] )
+									b <- a[ a$Outlier == TRUE,  'Outlier' ]
+									print( paste( colnames(iris)[i], '-------->', length(b) ) )
+									}
+
+[1] "Sepal.Length --------> 0"
+[1] "Sepal.Width --------> 0"
+[1] "Petal.Length --------> 0"
+[1] "Petal.Width --------> 0"
+
+# 4. 훈련데이터와 테스트 데이터로 분리합니다.
+
+library(caret)
+set.seed(1)
+train_num <- createDataPartition( iris$Species, p = 0.9 , list = F )
+
+train_data <- iris[train_num, ]         # 훈련데이터 90% 구현
+test_data <- iris[-train_num, ]         # 테스트데이터 10% 구현
+
+nrow(train_data)      # 135
+nrow(test_data)        # 15
+
+
+# 5. 훈련데이터로 모델을 훈련시킵니다.
+
+library(RWeka)
+
+model3 <- JRip( Species~. , data = train_data )
+model3                                                                  # 책 245p 에 아래의 내용에 대한 해석이 나옵니다.
+
+(Petal.Length <= 1.9) => Species=Iris-setosa (45.0/0.0)
+(Petal.Width >= 1.8) => Species=Iris-virginica (41.0/1.0)
+(Petal.Length >= 5) => Species=Iris-virginica (6.0/2.0)
+ => Species=Iris-versicolor (43.0/1.0)
+
+summary(model3)
+
+=== Confusion Matrix ===
+
+  a  b  c   <-- classified as
+ 45  0  0 |  a = Iris-setosa
+  0 42  3 |  b = Iris-versicolor
+  0  1 44 |  c = Iris-virginica
+
+
+# 6. 훈련된 모델에 테스트 데이터를 넣어서 예측을 합니다.
+
+result3 <- predict( model3, test_data[  , -5] )
+result3
+
+# 7. 모델을 평가합니다.
+
+sum(result3 == test_data[ , 5]) / nrow(test_data)            #  [1] 1
+
+
+
+*R로 분류한 데이터 : 버섯 데이터  -----------> 정확도 100%
+					 iris 데이터    -------------> 정확도 100%
+
+###  wine 데이터를 Riper 알고리즘으로 분류하는 머신러닝 모델을 만드시오 !
+
+wine <- read.csv("wine.csv", stringsAsFactors = T)        # 데이터 로드
+colSums(is.na(iris))            # 결측치 확인
+
+library(outliers)                                       # 이상치 확인
+
+grubbs.flag <- function(x) {
+  outliers <- NULL
+  test <- x
+  grubbs.result <- grubbs.test(test)
+  pv <- grubbs.result$p.value
+  while(pv < 0.05) {
+    outliers <- c(outliers,as.numeric(strsplit(grubbs.result$alternative," ")[[1]][3]))
+    test <- x[!x %in% outliers]
+    grubbs.result <- grubbs.test(test)
+    pv <- grubbs.result$p.value
+  }
+  return(data.frame(X=x,Outlier=(x %in% outliers)))
+}
+
+
+for ( i in 2:14 ) {
+									a <- grubbs.flag( wine[ , colnames(wine)[i] ] )
+									b <- a[ a$Outlier == TRUE,  'Outlier' ]
+									print( paste( colnames(wine)[i], '-------->', length(b) ) )
+									}
+[1] "Alcohol --------> 0"
+[1] "Malic --------> 0"
+[1] "Ash --------> 1"
+[1] "Alcalinity --------> 0"
+[1] "Magnesium --------> 2"
+[1] "Phenols --------> 0"
+[1] "Flavanoids --------> 0"
+[1] "Nonflavanoids --------> 0"
+[1] "Proanthocyanins --------> 1"
+[1] "Color --------> 1"
+[1] "Hue --------> 0"
+[1] "Dilution --------> 0"
+[1] "Proline --------> 0"
+
+library(caret)                         # 훈련 / 테스트 데이터 분리
+set.seed(1)
+train_num <- createDataPartition( wine$Type, p = 0.9 , list = F )
+
+train_data <- wine[train_num, ]         # 훈련데이터 90% 구현
+test_data <- wine[-train_num, ]         # 테스트데이터 10% 구현
+
+nrow(train_data)      # 162
+nrow(test_data)        # 16
+
+library(RWeka)          # 훈련데이터로 모델 훈련
+
+model4 <- JRip( Type~. , data = train_data )
+model4                                                                  # 책 245p 에 아래의 내용에 대한 해석이 나옵니다.
+
+(Flavanoids <= 1.31) and (Color >= 3.85) => Type=t3 (42.0/0.0)
+(Hue <= 0.59) => Type=t3 (2.0/0.0)
+(Alcohol >= 13.16) => Type=t1 (52.0/3.0)
+(Proline >= 770) and (Color >= 3.58) => Type=t1 (5.0/0.0)
+ => Type=t2 (61.0/0.0)
+
+summary(model4)
+
+=== Confusion Matrix ===
+
+  a  b  c   <-- classified as
+ 54  0  0 |  a = t1
+  3 61  0 |  b = t2
+  0  0 44 |  c = t3
+
+result4 <- predict( model4, test_data[  , -1] )          # 테스트 데이터 예측
+
+sum(result4 == test_data[ , 1]) / nrow(test_data)            #  모델 평가 / 0.9375
+
+
+##################################################################################################################
+
+▩  Riper 알고리즘을 파이썬으로 구현하기 ( 독버섯 )
+
+	R 에서의 Riper 패키지는 이진 분류, 다중 분류 다 분류가 가능한 패키지 입니다.
+	파이썬의 Riper 패키지는 이진 분류만 가능합니다. ( iris는 안됨 )
+	( 아래는 iris 해보다가 실패한거  / 그 아래에 독버섯 데이터를 하겠습니다. )
+
+######################### iris ##################################
+
+# 1. 실습하기에 앞서서 먼저 아나콘다 프롬프트 창에서 아래의 패키지를 설치합니다.
+
+pip install wittgenstein
+
+# 1. 데이터를 로드합니다.
+
+import pandas as pd
+iris = pd.read_csv("c:\\data\\iris2.csv")
+
+# 2. 결측치를 확인합니다.
+
+print( iris.isnull().sum() )
+
+# 3. 이상치를 확인합니다.
+
+def outlier_value(x):
+
+    for i in list(x.describe().columns):             # x.columns[(x.dtypes =='float64') | (x.dtypes == 'int64')]
+        Q1 = x[i].quantile(0.25)
+        Q3 = x[i].quantile(0.75)
+        IQR = Q3 - Q1
+        upper_bound = Q3 + (IQR*1.5)
+        lower_bound = Q1 - (IQR*1.5)
+        a = x.loc[ (x[i] > upper_bound ) | ( x[i]< lower_bound ) , i ].count()          # 이상치의 건수
+        b = i
+        print( '{0:<10} : {1:>5} 건'.format(  b , a  ) )
+
+outlier_value( iris )                        # Sepal.Width :     4 건
+
+# 4. 훈련 데이터와 테스트 데이터를 분리합니다.
+
+x = iris.iloc[ : , :4  ].to_numpy()
+
+# 정답컬럼을 0 , 1, 2 로 변경합니다.
+
+y = iris.iloc[ : , 4]
+
+from sklearn.preprocessing import LabelEncoder
+
+encoder = LabelEncoder()
+encoder.fit(y)
+y2 = encoder.transform(y)              # 0, 1, 2 로 변경함
+
+from sklearn.model_selection import train_test_split
+
+x_train , x_test, y_train, y_test = train_test_split( x, y2, test_size = 0.1, random_state = 1 )
+
+print(x_train.shape)       # ( 135,4 )
+print(x_test.shape)         # ( 15, 4 )
+print(y_train.shape)       # ( 135, )
+print(y_test.shape)        # ( 15, ) 
+
+# 5. 정규화 합니다.
+
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler()
+scaler.fit(x_train)
+
+x_train2 = scaler.transform(x_train)
+x_test2 = scaler.transform(x_test)
+
+# 6. 모델 생성
+
+import wittgenstein as lw
+
+model = lw.RIPPER()
+
+# 7. 모델 훈련
+
+model.fit(x_train2, y_train)           # 안되네 gg
+
+
+######################### 독버섯 데이터  ##################################
+
+# 1. 데이터 로드
+
+import pandas as pd
+mush = pd.read_csv("c:\\data\\mushrooms.csv")
+
+# 2. 훈련 데이터와 테스트 데이터 분리
+
+x = mush.iloc[ : , 1:  ]
+y = mush.iloc[ : , 0 ]
+
+# LabelEncoder 를 사용해서 정답 컬럼을 0 과 1로 변경합니다.
+
+from sklearn.preprocessing import LabelEncoder
+encoder = LabelEncoder()
+encoder.fit(y)
+y2 = encoder.transform(y)               # type(y2) = numpy array
+
+# 관심범주 확인하는 코드
+
+print(encoder.classes_)                 # ['edible' 'poisonous']   / 0 , 1
+
+x2 = x.to_numpy()
+
+from sklearn.model_selection import train_test_split
+
+x_train, x_test, y_train, y_test = train_test_split( x2, y2, test_size = 0.2 , random_state = 1 )
+
+print(x_train.shape)        # ( 6499,22 )
+print(x_test.shape)        # ( 1625,22 )
+print(y_train.shape)        # ( 6499, )
+print(y_test.shape)        # ( 1625, )
+
+# 3. 모델 생성
+
+import wittgenstein as lw
+model = lw.RIPPER()
+
+# 4. 모델 훈련
+
+model.fit(x_train , y_train)
+
+# 5. 모델 예측
+
+result = model.predict(x_test)
+
+# 6. 모델 평가
+
+print(sum(result == y_test) / len(y_test))        # 1 , 다르게 나왔다면 model.fit 에서 random_state 조절
+
+
+### 독일 은행 데이터에서 채무 불이행자를 예측하는 분류 모델을 Riper 알고리즘으로 만드시오
+		   ( credic.csv )
+
+# 1. 데이터 로드
+
+import pandas as pd
+credit = pd.read_csv("c:\\data\\credit.csv")
+
+# 2. 정답 컬럼 변경 & 명목형 데이터 변경
+
+x = credit.iloc[ : , 0:-1  ]
+y = credit.iloc[ : , -1 ]
+
+# LabelEncoder 를 사용해서 정답 컬럼을 0 과 1로 변경합니다.
+
+from sklearn.preprocessing import LabelEncoder
+encoder = LabelEncoder()
+encoder.fit(y)
+y2 = encoder.transform(y)               # type(y2) = numpy array
+
+# 관심범주 확인하는 코드
+
+print(encoder.classes_)                 # ['no' 'yes']   / 0 , 1
+
+# 명목형 데이터 변경
+
+x2 = pd.get_dummies(x)
+x3 = x2.to_numpy()
+
+# 3. 훈련데이터 / 테스트 데이터 분리
+
+from sklearn.model_selection import train_test_split
+
+x_train, x_test, y_train, y_test = train_test_split( x3, y2, test_size = 0.1 , random_state = 1 )
+
+print(x_train.shape)        # ( 800 ,44 )
+print(x_test.shape)        # ( 200, 44 )
+print(y_train.shape)        # ( 800, )
+print(y_test.shape)        # ( 200, )
+
+# 3. 모델 생성
+
+import wittgenstein as lw
+model = lw.RIPPER()
+
+# 4. 모델 훈련
+
+model.fit(x_train , y_train, random_state = 5 )
+
+# 5. 모델 예측
+
+result = model.predict(x_test)
+
+# 6. 모델 평가
+
+print(sum(result == y_test) / len(y_test))        # 0.8
+
