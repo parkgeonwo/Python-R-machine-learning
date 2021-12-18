@@ -1,0 +1,1231 @@
+▩ 다중회귀 분석
+
+*회귀분석의 유형
+
+	1. 단순회귀 : 독립변수가 1개이며 종속변수와의 관계가 직선
+	2. 다중회귀 : 독립변수가 k개이며 종속변수와의 관계가 선형 ( 1차함수 )
+	3. 다항회귀 : 독립변수가 종속변수와의 관계가 1차함수 이상인 관계
+	4. 고선회귀 : 독립변수가 1개이며, 종속변수와의 관계가 곡선
+	5. 로지스틱 회귀 : 독립변수가 범주형( 이진변수 )인 경우
+	6. 비선형 회귀 : 회귀식의 모양이 미지의 모수들의 선형관계로 이루어져 있지 않는 모형
+
+
+단순회귀 --------------------> 상관관계 --------------------------> 다중회귀
+						   	↓
+						다중공선성
+
+머신러닝으로 무엇을 하고자 하는가 ?
+
+	1. 분류 : knn, naivebayes, decision tree, random forest
+	2. 예측 : regression
+
+다중선형회귀란 ? 단순 선형회귀 분석의 목적이 하나의 독립변수만을 가지고 종속변수를
+				   예측하기 위한 회귀모형을 만들기 위한 것이었다면, 다중 회귀분석의 목적은
+				   여러개의 독립변수들을 가지고 종속변수를 예측하기 위한 회귀모형을 만드는 것
+
+예 : 집값에 영향을 미치는 요소가 단순히 평수 하나만 있는게 아닙니다.
+
+	집값  <--------------------- 평수, 교통, 학군, 범죄율, 층수, 방의 갯수, 한강뷰.....
+	  ↑
+	종속변수
+
+질문 1. 집값에 영향일 미치는 요소가 위의 여러개 독립변수들 중에서 어떤것인가?
+
+질문 2. 집값을 예측하기 위한 다중회귀식은 어떻게 되는가 ?
+
+현업 예: 태양열전지를 만드는데 있어서 전력효율을 최대화 할 수 있는 가장 좋은
+		태양열 전지 재료의 조합이 어떻게 되는가 ?
+		
+전력양 = 기울기 1 * 재료1 + 기울기2 * 재료2 ........ + b       ( p 263 식 )
+		>> 회귀계수
+
+
+여러개의 회귀 계수를 알아내기 위한 그림이 책 263p 그림 6.5에 나옵니다.
+
+
+
+
+
+
+Y = βx
+
+베타값을 알아내려면 행렬로 연산해서 알아내야 합니다.
+그러기 위해서는 아래의 4가지 용어를 알아야합니다.
+
+	1. 전치행렬 : 행과 열을 교환한 행렬
+	2. 단위행렬 : 0으로 이루어진 행렬에서 대각선이 1인 행렬
+	3. 역행렬 :  행렬곱( 내적 ) 했을때 단위행렬이 되는 행렬
+	4. 의사역행렬 : 기본적으로 역행렬을 구하려면 행렬이 정방행렬이어야하는데
+				 직사각형 행렬도 역행렬을 구할 수 있도록 구현한 행렬
+
+* 전치 행렬
+ 행과 열을 바꾼행렬
+ 
+
+ 
+* 단위 행렬
+ 0으로 구성되어 있는 행렬에서 대각선 행렬이 1인 행렬
+
+ 
+* 역행렬
+ 어떤 정방행렬에 역행렬을 곱했을 때, 단위행렬이나온다.
+  정방행렬이어야 역행렬을 구할 수 있다.
+            * 정방행렬 ( 정사각형행렬 )
+ 
+*방정식과 역행렬
+
+
+( 1 ) 아래의 방정식의 해를 구하시오 ! ( 게시글 755번 )
+
+
+
+
+
+x1               1              4     -3       ( -1 )
+        =   -----------                       
+x2             4 - 6          -2      1       (  2 )
+
+
+예제 2. 위의 방정식을 R로 구현하기 위해서 아래의 A 행렬을 만드시오
+		Ax = B
+
+A = 1 3 / 2 4
+B = -1 / 2
+
+
+
+A = matrix( c(1,3,2,4), nrow = 2, ncol = 2 ,byrow = T )
+B = matrix( c(-1,2), nrow = 2, ncol = 1 ,byrow = T )
+
+예제 3. 아래의 행렬곱을 수행해서 미지수 x1, x2 행렬을 출력하시오 !
+		Ax = B ------------> x = A(-1)B
+
+solve(A)            # A 의 역행렬
+
+solve(A)%*%B
+
+###  위의 행렬곱을 파이썬으로 구현하시오 
+		  X = A(-1)B         A = 1 3 / 2 4 , B = -1 / 2
+
+import numpy as np
+
+A = np.array([1,3,2,4]).reshape(2,2)
+B = np.array([-1,2]).reshape(2,1)            # reshape(-1,1)  , (-1,1)을 넣으면 행자리는 맘대로하고 열은 1로 해라
+result = np.dot ( np.linalg.inv(A) , B)       
+print(result)
+
+
+               Y               =             β             *               X
+(종속변수 행렬)  = (기울기 행렬) * (독립변수 행렬)
+
+            β = YX(-1)
+
+책에서 위의 식이 없는 이유는 X 행렬이 정방행렬이 아니기 때문에 역행렬을 위와같이
+바로 구할 수 없기 때문입니다. ( P 264 )
+
+그러면 정방행렬이 아닌 직사각형 행렬에 대한 역행렬을 구하려면 어떻게 해야하는가?
+자기 자신의 행렬에 자기 자신의 전치행렬을 곱하면 정방행렬이 됩니다.
+이 정방행렬의 역행렬을 구하면 됩니다.
+
+
+
+
+▩ 책 264 페이지의 중간에 나온 회귀계수를 구하는 식을 구현하기 위해 알아야할 내용
+
+예제 1. 아래의 행렬을 R 로 구현하고 아래의 행렬의 전치행렬을 구하시오 
+
+
+a <- matrix( c(1,2,3,4,5,6) , nrow = 2, ncol = 3, byrow = T )
+a
+t(a)
+
+예제 2. 아래의 단위행렬을 만드시오 !
+
+
+b <- diag(3)
+b
+
+예제 3. 자기 자신과 단위행렬을 내적하면 자기 자신이 되는지 확인하시오 !
+
+
+
+a <- matrix( c(1,2,3,4,5,6,7,8,9), nrow = 3, ncol = 3, byrow = T )
+b <- diag(3)
+
+a %*%b
+
+예제 4. 아래의 a 행렬의 역행렬을 R 로 구하시오 !
+
+
+
+a <- matrix( c(1,2,3,4), nrow = 2, ncol = 2, byrow = T )
+solve(a)
+
+예제 5. 자기 자신과 자기 자신과의 역행렬을 내적하여 단위행렬이 되는지 확인하시오
+
+round ( a %*% solve(a) )
+
+※ 정리 :
+	1. 자기자신과 단위행렬을 내적하면 자기자신이 출력된다.
+	2. 자기자신과 자기자신의 역행렬을 내적하면 단위행렬이 출력된다.
+
+예제 6. 기본적으로 역행렬은 정방행렬일 때만 구할 수 있습니다.
+	      직사각형 행렬이면 역행렬을 구할 수 없습니다.
+	      직사각형 행렬의 역행렬을 구하려면 의사 역행렬을 구해야한다. 
+	      이 말이 맞는지 아래의 직사각형 행렬의 역행렬을 구해 봅니다.
+
+
+a <- matrix( c(1,2,3,4,5,6) , nrow = 2, ncol = 3, byrow = T )
+solve(a)
+# Error in solve.default(a) : 'a' (2 x 3) must be square
+
+
+예제 7. 위의 행렬에다가 행렬의 전치행렬을 내적하고 그 결과행렬의 역행렬을 구하시오!
+
+solve( a %*% t(a) )
+
+
+▩ 다중회귀에서 기울기 행렬을 만들기 위해 알아야할 내용 다시 정리
+
+	1. 자기 자신과 단위행렬을 내적하면 자기 자신이 된다.
+	2. 자기 자신과 자기 자신의 역행렬을 내적하면 단위행렬이 된다.
+	3. 직사각형 행렬은 역행렬을 구할 수 없으므로 의사 역행렬을 이용해서 역행렬을 구한다.
+
+
+
+
+▩ 위의 식을 R 의 함수로 구현하기
+
+reg <- function( y,x ) {                                  # y = 종속변수자리, x = 독립변수 자리
+					x <- as.matrix(x)         # 행렬로 변환하는 코드
+					x <- cbind( intercept = 1, x )    # 절편 추가 코드 , 'intercept' 라는 컬럼을 추가하고 1로입력
+					b <- solve( t(x) %*% x ) %*% t(x) %*% y        # 기울기 구하는 수학식
+					colnames(b) <- 'estimate'          # 컬럼명을 지정
+					print(b)
+					}
+
+예제 1. 우주 왕복선 챌린저호의 O형링 파손 원인 중 가장 영향이 큰 요소가 온도, 압력, 비행기 노후화를
+	      나타내는 비행기 번호 중 어떤 것인지 기울기로 알아내시오 !
+	
+cha <- read.csv("challenger.csv", header = T)
+reg( y = cha$distress_ct , x = cha[ , 2:4 ] )
+
+                                             estimate
+intercept                          3.527093383
+temperature                   -0.051385940
+field_check_pressure     0.001757009
+flight_num                        0.014292843
+
+y = -0.0513x1 + 0.0017x2 + 0.0142x3 + 3.5270
+	온도              압력      비행기번호
+
+### 스마트폰 만족도 ( 종속변수 )에 영향을 미치는 요소중 가장 영향력이 있는
+		   독립변수는 무엇인가 ? ( multi_hg.csv )
+
+multi <- read.csv("multi_hg.csv")
+reg( y = multi$만족감, x = multi[  , 1:3] )
+
+                    estimate
+intercept   3.5136006
+외관           0.2694261
+편의성      0.2105249
+유용성      0.1623154
+
+### 위에서 우리가 직접 만든 reg 함수와 R 의 회귀에 관련한 내장함수인 lm 과
+		   동일한 결과가 나오는지 lm 함수를 이용해서 위의 결과를 출력하시오 !
+		
+smart = read.csv("multi_hg.csv", header =T )
+attach(smart)
+lm(만족감 ~ 외관 + 편의성+유용성, data = smart)
+
+Coefficients:
+(Intercept)         외관       편의성       유용성  
+     3.5136       0.2694       0.2105       0.1623  
+
+### 위의 reg 함수를 파이썬으로 구현하고 아래와 같이 실행되게 하시오 !
+			reg( cha['distress_ct'], cha.iloc[ : , 1:4 ] )
+
+
+def reg(y, x):                                   # y 값에 series로 넣어줘야함 , 테이블['컬럼']
+    import numpy as np
+    col_names = list((x.columns))               # 컬럼 이름 저장                          
+    x['temp'] = x.iloc[:, 0]                               # 0번째행을 temp 컬럼으로 추가
+    x.iloc[ : , 0] = 1                                               # 0번째행에 intercept 로서 모든 값에 1 넣어줌
+    x2 = np.array(x).reshape(x.shape[0], x.shape[1])                      # 행렬화
+    b = np.dot ( np.dot ( np.linalg.inv( np.dot( x2.T , x2 ) ) , x2.T ) , y )              # 베타값 도출
+  
+    print('intercept :',round( b[0],5))
+    print(col_names[0],':',round(b[len(b)-1],5))
+    if len(b) >= 3:
+        for i in range(len(col_names)-1):
+            print(col_names[i+1],':',round(b[i+1],5))
+        
+
+cha = pd.read_csv("c:\\data\\challenger.csv")
+reg(cha['distress_ct'], cha.iloc[ : , 1:4 ])                  
+
+
+다른 답 :
+
+import pandas as pd
+def reg(y,x):
+    import numpy as np
+    Intercept = pd.DataFrame({'Intercept':[1]*len(x)})       # 모든 값이 1로 된 intercept 컬럼을 가진 데이터프레임
+    x = pd.concat([Intercept,x],axis=1)   # x와 위의 데이터프레임과 합체 절편을 추가하는 코드
+    x=np.matrix(x)                                           # 행렬로 변환하는 코드
+    b = np.dot(np.linalg.solve(np.dot(x.T,x),x.T),y) #기울기 구하는 수학식
+    print(b)
+ 
+cha = pd.read_csv("d:\\data\\challenger.csv")
+reg( cha['distress_ct'],  cha.iloc[ :  , 1:4 ] )
+
+
+▩ 분류할 때도 데이터를 정규화하고 모델을 학습시켰는데,
+     회귀분석에서도 정규화를 해야하는가 ?
+
+책의 예제인 미국 보험회사에서 미국 국민의 의료비를 가지고 보험 비용을 산정하는 예
+
+	1. 정규화를 하는 경우
+	
+	의료비용에 가장 영향을 크게 미치는 변수가 무엇인지 확인할 때
+	종속변수에 대한 독립변수의 영향도를 확인하고 싶을 때
+	예 : 의료비에 가장 큰 영향을 주는 컬럼이 무엇인가? 부양가족수, 비만여부, 흡연여부, 나이, 사는지역
+	
+	2. 정규화를 하지 않는 경우
+	
+	나이가 한 살 늘어날때 의료비가 얼마나 인상되어야 하는지 예측해야할 때
+	부양가족이 한명이 더 늘어날때 마다 의료비가 얼마나 인상되는지 예측해야할 때
+	예 : 부양가족이 한명 더 늘어나면 년간 의료비가 55만원 더 늘어나게 됩니다.
+	        ( 정확한 수치를 알아내야한다면 )
+
+▩ 표준화와 정규화의 차이점
+
+	1. 표준화 : 평균이 0 이고 표준편차가 1인 데이터 분포로 데이터를 구성하는 것
+			예 : scale 함수
+			
+	2. 정규화 : min/max 정규화 인데 데이터를 0~1 사이의 숫자로 변환하는 것
+			예 : minmax 함수 ( 직접생산해야함 )
+
+예제 1. 미국 대학교 입학에 가장 크게 영향을 미치는 과목이 무엇인지 알아내시오 ~
+		( 정규화하지 않고 수행 )
+		데이터 : sports.csv
+		컬럼 : academic (학과점수)
+			    sports (체육점수)
+			    music ( 음악점수 )
+			    acceptance( 입학기준점수 : 학과,체육,음악 점수를 가지고 산출한 점수)
+
+
+m <- read.csv("sports.csv", header = T)
+
+reg( y = m$acceptance , x = m[  , c(2:4)] )
+
+                  estimate
+intercept   11.4902799
+academic   0.1557737
+sports        0.5726859
+music         0.1046008
+
+※ 결과 : 정규화를 안했더니 스포츠가 가장 영향력이 크네,,
+
+예제 2. 이번에는 정규화를 하고 기울기를 확인하세요 !
+
+m <- read.csv("sports.csv", header = T)
+
+normalize <- function (x) {
+						return ( ( x - min(x) ) / ( max(x) - min(x) ) )
+						}
+
+sports_n <- as.data.frame( lapply( m[ , c(2:5)], normalize ) )
+sports_n
+
+reg( y=sports_n$acceptance, x = sports_n[  , c(1:3)] )
+
+                   estimate
+intercept 0.06121748
+academic  0.48963854
+sports    0.30194528
+music     0.11432339
+
+※ 이번에는 정규화를 했더니 학과점수가 더 높게 기울기가 출력되었습니다.
+     위와 같이 종속변수에 영향도가 가장 큰 독립변수가 무엇인지 알아내려면 정규화를 해야합니다.
+
+예제 3. R 함수인 scale 함수를 이용해서 표준화를 하고 기울기를 확인하시오 !
+
+m <- read.csv("sports.csv", header = T)
+
+sports_n <- as.data.frame( lapply( m[ , c(2:5)], scale ) )
+
+reg( y=sports_n$acceptance, x = sports_n[  , c(1:3)] )
+
+                       estimate
+intercept -1.183949e-16
+academic   6.920873e-01
+sports     4.400019e-01
+music      1.511278e-01
+
+### 위의 결과( 표준화해서 영향도 확인 )를 파이썬으로 수행하시오 ~
+		정규화 : from sklearn.preprocessing import MinMaxScaler
+		표준화 : from sklearn.preprocessing import StandardScaler
+		
+
+m = pd.read_csv("c:\\data\\sports.csv")
+
+x = m.iloc[ : , 1:4 ]
+y = m['acceptance']
+
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()                                    # 표준화 모델생성
+scaler.fit( x )                                              # 훈련데이터를 가지고 정규화 계산
+x2 = scaler.transform( x )           # 계산된 내용으로 데이터를 변환해서 x2에 담는다.
+
+df = pd.DataFrame( x2 )
+df.columns = m.columns[1:4]
+
+reg( y, df )
+
+결과 :
+intercept : 51.93519
+academic : 13.34036
+sports : 8.48128
+music : 2.91307
+
+▩ 다중회귀분석 실습 ( 미국 국민의 의료비 데이터를 예측 ) p 268
+
+★ 목표 : 보험회사에서 보험료 산정에 도움이 될 수 있도록 미국민의 의료비를 예측하는
+		회귀모델을 생성하기 
+
+# 1. 데이터를 로드합니다.
+# 2. 결측치가 있는지 확인합니다.
+# 3. 종속변수가 정규성을 띄는지 확인합니다.
+# 4. 독립변수들과 종속변수간의 상관관계를 확인합니다.
+# 5. 다중 회귀 분석 모델을 생성합니다.
+# 6. 회귀분석 결과해석을 합니다.
+# 7. 회귀분석 모형의 설명력을 확인합니다. ( 결정계수 )
+# 8. 결정계수를 높이기 위한 파생변수를 추가하여 성능을 높입니다.
+
+
+# 1. 데이터를 로드합니다.
+
+insurance <- read.csv("insurance.csv")
+
+데이터 소개 : 미국 환자의 가상 의료비가 들어있는 모의 데이터셋입니다.
+			   이 데이터는 미국 통계국의 인구 통계를 이용해 생성되었으며 대게 실제 질병을 반영.
+			   의료보험에 등록된 1,338명의 수익자 예시가 들어있으며,
+			   각 예시는 환자의 특성과 해당 연도에 의료보험에 청구된 전체의료비를 나타내는
+			   특징으로 구성되어 있습니다.
+age : 나이
+sex : 성별
+bmi : 체질량 비만 지수
+children : 부양가족수
+smoker : 흡연여부
+region : 사는 지역 ( 북동, 남동, 북서, 남서 )
+expenses : 의료비 ( 종속변수 )
+
+# 2. 결측치가 있는지 확인합니다.
+
+colSums(is.na(insurance))
+
+# 3. 종속변수가 정규성을 띄는지 확인합니다.
+
+hist(insurance$expenses)
+
+
+
+※ 그래프 해석 : 오른쪽으로 꼬리가 긴 분포를 보여줍니다. 대다수의 사람들의 의료비는
+				0 ~15000 달러사이에 있습니다. 이 분포는 선형회귀에서는 이상적이지 않지만
+				미리 약점을 알고 있으면 나중에 모델을 설계할 때 도움이 됩니다.
+
+
+
+# 4. 독립변수들과 종속변수간의 상관관계를 확인합니다.
+
+cor(  insurance[   , c( 'age', 'bmi', 'children', 'expenses') ] )
+
+                       age                bmi           children      expenses
+age           1.0000000 0.10934101 0.04246900 0.29900819
+bmi          0.1093410 1.00000000 0.01264471 0.19857626
+children   0.0424690 0.01264471 1.00000000 0.06799823
+expenses 0.2990082 0.19857626 0.06799823 1.00000000
+
+눈에 띄게 아주 강한 상관관계를 보이는것은 없지만 일부 눈에 띄는 연관성이 있습니다.
+Ex) age 와 bmi 는 약한 양의 상관관계가 있어서 나이가 들수록 몸무게가 증가하는 경향이 있다.
+      age 와 expenses를 보면 양의 상관관계를 보이고 있어서 나이가 들수록 의료비가 증가하는 경향이 있다.
+
+*독립변수들끼리 강한 상관관계를 보이고 있지는 않지만 다중공선성을 보이는지 확인합니다.
+
+model <- lm(expenses ~ age + bmi + children, data = insurance )
+library(car)
+vif(model)  > 10               # 다중공선성을 보이는 변수들 확인
+
+     age        bmi      children 
+   FALSE    FALSE     FALSE 
+
+
+
+※ 왜 회귀분석을 하기전에 상관관계를 확인해야 하는가?
+
+	독립변수들간의 강한 상관관계를 보이게 되는 다중 공선성 여부를 확인해야
+	회귀분석 결과에 가장 중요한 결정계수( 설명력 )에 대한 신임을 할 수 있기 때문이다.
+
++++++ 시각화해서 상관관계 확인하기 +++++
+
+library(psych)
+pairs.panels( insurance[  , c('age', 'bmi', 'children', 'expenses') ] )
+
+
+
+
+산포도에 있는 달걀모양의 객체는 상관관계 타원형으로 상관관계 강도를 시각화 한것입니다.
+타원이 늘어질수록 -------------> 강한 상관관계
+타원이 거의 완벽한 둥근 달걀 모양 ------------> 약한 상관관계
+
+*독립변수들의 상관관계를 통해서 알 수 있었던 점을 정리하면 ?
+
+	1. 나이가 많을 수록 의료비 더 많이 든다. ( 그래프의 4행 1열 )
+	2. 나이가 많을 수록 비만지수 더 높았다. ( 그래프의 2행 1열 )
+	3. 중년 무렵부터 부양가족수가 최고점이 된다. ( 그래프의 3행 1열 )
+
+
+# 5. 다중 회귀 분석 모델을 생성합니다.
+
+model <- lm( expenses ~ age + children + bmi + smoker + region , data = insurance )
+model
+
+또는
+
+attach(insurance)
+model <- lm( expenses ~. , data = insurance )
+model
+
+# 6. 회귀분석 결과해석을 합니다.
+
+Coefficients:
+    (Intercept)              age          sexmale              bmi         children  
+       -11941.6            256.8           -131.4            339.3            475.7  
+      smokeryes  regionnorthwest  regionsoutheast  regionsouthwest  
+        23847.5           -352.8          -1035.6           -959.3  
+
+※ 설명 : 
+	1. 나이가 일년씩 더해질 때 마다 평균적으로  의료비가 256.8 달러 증가될 것으로 예상됩니다.
+	2. 자녀가 한명씩 추가 될 때 마다 475.7 달러 추가될 것으로 예상됩니다.
+	3. 비만지수( bmi ) 의 단위가 증가할 때 마다 연간 의료비가 339.3 달러 증가될 것으로 예상
+	4. 더미변수를 자동으로 추가해서 변수 값의 상대적 추정은 다음과 같습니다.
+	
+	sexmale -131.4 ----------> 남성은 여성에 비해서 매년 의료비가 131.4 달러 적게 든다고 예상
+	smokeryes 23847.5 --------> 흡연자는 비흡연자보다 매년 평균 의료비가 23,847.5 달러 더 든다.
+	northeast 에 비해 northwest 는 의료비가 연간평균 352.8 달러 덜 들고
+					  southeast 는 의료비가 연간 평균 1035.6 달러 덜들고
+					  southwest 는 의료비가 연간 평균 959.3 달러 덜든다.
+
+# 7. 회귀분석 모형의 설명력을 확인합니다. ( 결정계수 )
+
+앞에서 분류를 할 때는 모델의 성능평가를 "정확도"로 했었습니다.
+회귀분석일 때는 회귀모델의 성능평가를 무엇으로 하나요 ? "결정계수"
+결정계수가 1에 가까운 값이 나와서 이 회귀모델의 설명력이 높다고 말할 수 있습니다.
+
+summary(model)
+
+Residual standard error: 6062 on 1329 degrees of freedom
+Multiple R-squared:  0.7509,	Adjusted R-squared:  0.7494 
+F-statistic: 500.9 on 8 and 1329 DF,  p-value: < 2.2e-16
+
+
+
+
+
+※ 결정계수 ? 데이터에 대한 회귀모델의 설명력을 나타내는 척도
+
+
+# 8. 결정계수를 높이기 위한 파생변수를 추가하여 성능을 높입니다.
+
+성능높이기 질문 1 : 나이가 들면 의료비가 많이 든다는것을 상관관계 분석을 통해서도 확인했는데
+				      나이 데이터를 더 크게 만들어서 파생변수를 생성하면 결정계수가 더 올라갈까?
+
+insurance$age2 <- insurance$age^2
+head(insurance)
+
+model2 <- lm(expenses ~. , data = insurance)
+summary(model2)        # 0.7509 ------> 0.7537 쪼금 올라감
+
+성능높이기 질문 2 : 비만인 사람(bmi >= 30) 이 의료비가 더 많이 들거라 예상하고 
+				       insurance 데이터 프레임에 비만인 사람과 비만이 아닌 사람들을 구분하는
+				       파생변수를 추가하면 결정계수가 더 올라가는지 확인해봅니다.
+
+insurance$bmi30 <- ifelse( insurance$bmi >= 30, 1, 0 )
+head(insurance)
+
+model3 <- lm(expenses ~. , data = insurance)
+summary(model3)         # 0.7582
+
+결정계수 : 0.7509 ----------------------> 0.7537 ----------------------> 0.7587  로 결정계수 상승
+						↑                                           ↑
+					age2 추가                             bmi30 추가
+
+성능높이기 질문 3 : 비만인 사람이 담배까지 피게되면 의료비가 더 증가할 것으로 예측되는지
+				      파생변수를 추가해서 결정계수를 확인하세요 ~
+
+
+insurance$smokeryes_bmi30 <- ifelse( insurance$bmi >= 30 & insurance$smoker == 'yes', 1, 0 )
+head(insurance)
+
+model4 <- lm(expenses ~. , data = insurance)
+summary(model4)             # 0.8664
+
+
+결정계수 : 0.7509 -----------> 0.7537 ---------> 0.7587 ----------------> 0.8664
+					↑                          ↑                              ↑
+				age2 추가             bmi30 추가        smokeryes_bmi30
+
+
+기존에 없는 새로운 컬럼을 파생변수라고 합니다.
+
+맨끝에 나온 model4 의 summary 결과를 보면은 smokeryes_bmi30 의 기울기가 19810으로 나오고
+있습니다. smokeryes 의 기울기는 13405로 나오고 있습니다.
+이는 원래 흡연만 했을떄는 연간 의료비가 13,405 달러가 드는데 비만인 사람이 흡연까지 하게되면
+연간 의료비가 19,810 달러가 지출됨을 확인할 수 있습니다.
+
+
+
+
+### 파이썬으로 만든 다중회귀 기울기 구하는 reg 함수에
+		  다음과 같이 insurance를 입력했을때 수치형 데이터만 알아서 선택해서
+		  다음과 같이 기울기가 출력되게 하시오! ( 문자형 데이터는 나오지않게 )
+		  reg(insurance)
+		  age :
+		  bmi :
+		  chileren :
+		  expenses :
+
+Python )
+
+def reg(table):                                   
+    name = input('라벨 컬럼의 컬럼이름을 입력하세요 : ')
+    y = table.loc[ :, name ]                # y 값 만들어주기
+
+    col_names = list( table.columns[table.dtypes != 'object'] )       # 문자형으로된 컬럼 제거
+    col_names.remove(name)                                 # 라벨컬럼 제거
+    x = table.loc[ :, col_names ]
+
+    import numpy as np
+    col_names = list((x.columns))               # 컬럼 이름 저장                          
+    x['temp'] = x.iloc[:, 0]                               # 0번째행을 temp 컬럼으로 추가
+    x.iloc[ : , 0] = 1                                               # 0번째행에 intercept 로서 모든 값에 1 넣어줌
+    x2 = np.array(x).reshape(x.shape[0], x.shape[1])                      # 행렬화
+    b = np.dot ( np.dot ( np.linalg.inv( np.dot( x2.T , x2 ) ) , x2.T ) , y )              # 베타값 도출
+  
+    print('intercept :',round( b[0],5))
+    print(col_names[0],':',round(b[len(b)-1],5))
+    if len(b) >= 3:
+        for i in range(len(col_names)-1):
+            print(col_names[i+1],':',round(b[i+1],5))
+
+
+import pandas as pd
+insurance = pd.read_csv("c:\\data\\insurance.csv")
+reg(insurance)
+
+결과 :
+라벨 컬럼의 컬럼이름을 입력하세요 : expenses
+
+intercept : -6929.31445
+age : 239.96255
+bmi : 332.52158
+children : 543.04361
+
+R )
+
+reg <- function( y,x ) {                                  # y = 종속변수자리, x = 독립변수 자리
+  x <- as.matrix(x)         # 행렬로 변환하는 코드
+  x <- cbind( intercept = 1, x )    # 절편 추가 코드 , 'intercept' 라는 컬럼을 추가하고 1로입력
+  b <- solve( t(x) %*% x ) %*% t(x) %*% y        # 기울기 구하는 수학식
+  colnames(b) <- 'estimate'          # 컬럼명을 지정
+  print(b)
+}
+
+
+insur <- read.csv("insurance.csv", header = T)
+
+reg( y = insur$expenses , x = insur[  , c(1,3,4)] )
+
+결과 :
+
+                estimate
+intercept -6929.3145
+age         239.9626
+bmi         332.5216
+children    543.0436
+
+
+▩ 회귀분석 모델 summary 결과 해석
+
+summary(model4)
+
+Residuals 잔차 ? 표본에서 나온 관측값이 회귀선과 비교할 때 나타나는 차이
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-17297.1  -1656.0  -1262.7   -727.8  24161.6 
+
+예측에서 잔차에 대한 요약 통계를 위와 같이 확인할 수 있는데
+	1. 모델이 최소 하나의 관측치에 대해 거의 24161 달러의 비용을 낮게 예측했다.
+	2. 잔차의 50%는 -1656 달러 ~ -727.8 달러 사이에 있다 ( 1Q ~ 3Q )
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-17297.1  -1656.0  -1262.7   -727.8  24161.6 
+
+Coefficients:
+                  Estimate Std. Error t value Pr(>|t|)    
+(Intercept)       139.0053  1363.1359   0.102 0.918792    
+age               -32.6181    59.8250  -0.545 0.585690    
+sexmale          -496.7690   244.3713  -2.033 0.042267 *  
+bmi               119.7715    34.2796   3.494 0.000492 ***
+children          678.6017   105.8855   6.409 2.03e-10 ***
+smokeryes       13404.5952   439.9591  30.468  < 2e-16 ***
+regionnorthwest  -279.1661   349.2826  -0.799 0.424285    
+regionsoutheast  -828.0345   351.6484  -2.355 0.018682 *  
+regionsouthwest -1222.1619   350.5314  -3.487 0.000505 ***
+age2                3.7307     0.7463   4.999 6.54e-07 ***
+bmi30            -997.9355   422.9607  -2.359 0.018449 *  
+smokeryes_bmi30 19810.1534   604.6769  32.762  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 4445 on 1326 degrees of freedom
+Multiple R-squared:  0.8664,	Adjusted R-squared:  0.8653 
+F-statistic: 781.7 on 11 and 1326 DF,  p-value: < 2.2e-16
+
+
+※ 설명 : 추정된 회귀 계수별로 표시된 p 값은 추정된 계수가 실제 0일 확률 추정치 입니다.
+		p 값이 작은 경우 실제계수가 0 이 아닐 가능성이 높다는 것을 말하며
+		특징이 종속변수와 관계가 없을 가능성이 아주 낮다는 것을 의미합니다.
+		
+		유의수준보다 낮은 p 값은 통계적으로 유의한것으로 간주됩니다.
+		p값이 0.05 미만으로 나온 독립변수가 유의한 변수들 입니다.
+		
+	*p-value 값 ? 귀무가설에서 얻은 검정통계량의 값 이상으로 대립가설에서 유리한
+				데이터를 얻을 수 있는 확률
+		
+		p값 > 유의수준   -------------------------> 귀무가설을 기각할 수 없다.
+		p값 < 유의수준   -------------------------> 대립가설을 채택할 충분한 근거가 있다.
+		
+		옆에 나온 별(*) 이 추정치로 충족되는 유의수준을 나타내는 각주에 해당
+		( *붙으면 0.05보다 낮다. 많을수록 좋다 )
+
+smokeryes_bmi30 에 대한 귀무가설과 대립가설이 뭔지 정의해보면 ?
+
+귀무가설 : 비만인 사람이 흡연까지 하는것은 의료비 상승과 관련이 없다.
+대립가설 : 비만인 사람이 흡연까지 하는것은 의료비 상승과 관련이 있다.
+
+
+▩ Adjust R-square ?
+
+좋은 회귀 모형에는 두 가지 조건이 있다.
+
+	1. 데이터 잘 설명한다.
+	2. 간단하다.
+
+독립변수가 많은 회귀 모형의 경우에는 위의 첫번째 조건을 만족합니다.
+그러나 두번째 조건에서는 탈락이라고 볼 수 있습니다.
+아무리 설명력이 좋아도 복잡하다면 그다지 좋은 모형은 아닙니다.
+독립변수가 많으면 결정계수가 높아지는데 결정계수가 모형의 설명력을 측정하기에
+좋은 척도라는것은 사실이지만 위의 단점을 보안하기 위해 보안된 척도가 있는데
+그게 바로 " 조정된 결정계수 ( Adjust R-square ) " 입니다.
+
+Multiple R-squared:  0.8664,	Adjusted R-squared:  0.8653 
+
+독립변수가 종속변수를 86 % 설명하고 있다는 뜻입니다.
+만약 위의 둘의 차이가 크면 불필요한 변수가 있을것이라고 예상할 수 있습니다.
+
+회귀모델을 만들고 데이터 분석 결과 보고서를 만들때 데이터 분석가들이 해야할 일 ?
+
+	1. 성능을 높이기 위한 작업에 대한 설명 : 
+	
+	분류일 때는 모델의 성능을 개선하려고 했던일 ? 하이퍼 파라미터 조절
+													1. KNN : k값
+													2. naivebayes : laplace 값
+													3. decision tree : trials 값
+	회귀분석일 때 모델의 성능을 개선하기 위해 해야할 일 ? 파생변수 추가
+	
+	
+▩ 책에 나온 방법으로 파생변수 생성하여 결정계수 올리기 ( p 285 )
+
+책에 나온데로 bmi30*smoker 추가하기 실습
+
+# 1. 데이터 로드하기
+insurance <- read.csv("insurance.csv")
+
+# 2. age2 추가하기
+insurance$age2 <- age^2
+
+# 3. bmi30 파생변수 추가하기
+insurance$bmi30 <- ifelse( insurance$bmi >= 30, 1, 0 )
+
+# 4. 모델 생성하기
+model7 <- lm( expenses ~ age + age2 + children + bmi + sex + bmi30*smoker + region, data = insurance )
+
+summary(model7)
+
+bmi30:smokeryes 19810.1534   604.6769  32.762  < 2e-16 ***      # 실제로 insurance에 추가된건 아니지만 파생변수로서 생김
+
+문제 266. bmi30과 성별을 이용해서 파생변수가 모델생성할 때 만들어지게 하고
+		  혹시 결정계수가 올라가는지 아니면 유리의한 독립변수가 만들어지는지 확인하시오 !
+		
+model8 <- lm( expenses ~ age + age2 + children + bmi + sex + bmi30*sex + region, data = insurance )
+
+summary(model8)
+
+sexmale:bmi30    2161.220   1246.832   1.733  0.08326 .
+Multiple R-squared:  0.1353,	Adjusted R-squared:  0.1288 
+
+
+### 남자이면서 흡연하는 경우와 여자이면서 흡연을 하는 경우에 어느쪽이 더 의료비가 
+		   많이 드는지 두개의 파생변수를 추가해서 모델을 생성하시오 !
+		   man_smokeryes , woman_smokeryes
+
+
+insurance <- read.csv("insurance.csv")
+insurance$age2 <- age^2
+insurance$bmi30 <- ifelse( insurance$bmi >= 30, 1, 0 )
+insurance$man_smokeryes <- ifelse( insurance$sex == 'male' & insurance$smoker == 'yes', 1, 0 )
+insurance$woman_smokeryes <- ifelse( insurance$sex == 'female' & insurance$smoker == 'yes', 1, 0 )
+model9 <- lm( expenses ~ age + age2 + children + bmi + sex  + region + man_smokeryes + woman_smokeryes , data = insurance )
+summary(model9)
+
+man_smokeryes   24905.361    546.979  45.533  < 2e-16 ***
+woman_smokeryes 22519.986    618.563  36.407  < 2e-16 ***
+
+▩ 다중공선성
+
+	다중 회귀 분석을 하고 결과를 봤더니 유의한 변수들을 발견할 수  없었다고 한다면
+	다중공선성을 의심해 봐야합니다.
+	
+	다중회귀분석을 했는데 결과에서 유의한 변수들이 보이지 않는다면 독립변수들끼리의
+	상관관계가 아주 높은지 의심을 해봐야합니다.
+	
+	만약에 독립변수들끼리의 상관관계가 아주 강하여 절대값 1에 가까워 지면
+	최소제곱법 적용자체가 매우 심각한 국면을 맞이하게 됩니다.
+	이때 나타나는 현상을 다중 공선성이라고 합니다.
+
+▩ 다중 공선성 실험
+
+	1. 다중공선성의 vif( 팽창계수 ) 를 확인할 수 있는 패키지를 설치합니다.
+
+install.packages('car')
+library(car)
+	
+	2. 데이터를 로드합니다.
+	
+test <- read.csv("test_vif1.csv")
+test
+	
+종속변수 : 시험점수
+독립변수 : 아이큐, 공부시간
+	
+	3. 독립변수들 끼리의 상관관계를 확인합니다.
+	
+cor ( test [  , c('아이큐','공부시간') ] )
+	
+	          아이큐  공부시간
+아이큐   1.0000000 0.7710712
+공부시간 0.7710712 1.0000000
+	
+※ 설명 : 두 독립변수의 상관관계가 강한 양의 상관관계를 보이고 있습니다.
+	
+	4. 회귀모델을 생성합니다.
+	
+model <- lm( test$시험점수 ~ 아이큐 + 공부시간 , data = test )
+summary(model)
+	
+결정계수가 0.9으로 1에 가까운 설명력을 보이고 있고 아이큐, 공부시간 둘 다 
+	
+	
+	5. 다중공선성을 보이는지 확인합니다.
+
+library(car)
+vif(model) > 10
+
+현업기준 : 팽창계수 (vif) 가 10보다 큰것으로 골라내는게 일반적이고
+		     엄격하게 하려면 5보다 큰것을 골라냅니다.
+		     느슨하게 하려면 15~20으로 골라냅니다.
+		
+결론 : 공부시간과 아이큐는 서로 상관관계가 높았으나 팽창계수가 높지 않아
+	    이 회귀모델은 적절한 모형임이 확인이 됩니다.
+	
+### test_vif2.csv 를 로드하면 등급평균이 추가되어있는데 이 데이터를 로드해서
+		   다중회귀 분석을 하고 결정계수를 확인하고 다중공선성을 보이는 독립변수들이 있는지
+		   실험하시오 ( 독립변수 : 공부시간, 아이큐 , 등급평균 / 종속변수 : 시험점수 )
+
+
+※ 중요하게 확인해야할 내용
+
+다중 공선성을 보이는 독립변수들의 p-value 값이 어떻게 나타나고 있는지 확인해야 합니다 !!
+그 독립변수의 p-value 가 0.05 미만인지를 확인해야합니다.
+그래야 유의한 변수이기 때문입니다.
+
+	1. 데이터를 로드합니다.
+	
+test2 <- read.csv("test_vif2.csv")
+test2
+	
+종속변수 : 시험점수
+독립변수 : 아이큐, 공부시간, 등급평균
+	
+	2. 독립변수들 끼리의 상관관계를 확인합니다.
+	
+cor ( test2 [  , c('아이큐','공부시간','등급평균') ] )
+	
+                  아이큐  공부시간  등급평균
+아이큐   1.0000000 0.7710712 0.9736894
+공부시간 0.7710712 1.0000000 0.7300546
+등급평균 0.9736894 0.7300546 1.0000000
+
+※ 설명 : 아이큐와 등급평균이 서로 1에 가까운 높은 상관관계를 보입니다.
+	
+	3. 회귀모델을 생성합니다.
+	
+model2 <- lm( test2$시험점수 ~ 아이큐 + 공부시간 + 등급평균 , data = test2 )
+summary(model2)
+	
+Coefficients:
+                 Estimate Std. Error t value Pr(>|t|)  
+(Intercept) 50.30669   35.70317   1.409   0.2085  
+아이큐       0.05875    0.55872   0.105   0.9197  
+공부시간     0.48876    0.17719   2.758   0.0329 *
+등급평균     7.37578    8.63161   0.855   0.4256  
+
+아이큐와 등급평균 둘다 유의미한 독립변수가 아님을 나타내고 있습니다.
+둘다 p-value가 크게 나왔습니다. 즉 각각의 독립변수들은 종속변수에 유의한 영향을
+미치지 못하고 있습니다. 그렇기 때문에 아이큐와 등급평균 둘다 시험점수에 미치는
+영향이 없거나 또는 두 변수의 다중공선성을 의심해 봐야합니다.
+
+	4. 다중공선성을 보이는지 확인합니다.
+
+library(car)
+vif(model2)
+
+   아이큐  공부시간  등급평균 
+22.643553  2.517786 19.658264 
+
+
+결론 : 둘다 현업기준으로 봤을때 높은 다중공선성 여부를 보이므로 회귀분석 결과에 좋지않은
+	    영향을 미쳤습니다. 이럴때는 둘중에 하나를 제외하고 회귀분석을 해야합니다.
+	    그러면 둘 중에 어떤것을 제외 시켜야할지는 각각 테스트를 해보고 결정계수가 높은것을
+	    선택하면 됩니다.
+
+	1. 아이큐, 공부시간
+	2. 등급평균, 공부시간
+
+model5 <- lm( test2$시험점수 ~ 아이큐 + 공부시간 , data = test2 )
+summary(model5)         # 0.9053 , p-value는 둘다 낮음
+
+model6 <- lm( test2$시험점수 ~ 등급평균 + 공부시간 , data = test2 )
+summary(model6)         # 0.9154, p-value는 둘다 낮음 , 모델로 채택
+
+▩ 파이썬으로 다중 공선성 문제를 실험하는 방법
+
+# 1. 데이터를 로드합니다.
+
+import pandas as pd
+test2 = pd.read_csv("c:\\data\\test_vif2.csv", encoding = 'euckr')
+print( test2 )
+
+# 2. 다중회귀 모델을 만듭니다.
+
+from statsmodels.formula.api import ols
+
+model = ols( '시험점수 ~ 아이큐 + 공부시간 + 등급평균', test2 )
+
+result = model.fit()        # 모델 훈련
+
+# 3. 회귀분석 결과를 확인합니다.
+
+print ( result.summary() )
+
+
+
+print( '결정계수 :', result.rsquared  )         # 0.9155448852987765
+
+# 4. 팽창계수를 확인합니다.
+
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+print ( model.exog_names )        # 모델에서 보이는 컬럼명과 순서확인
+
+# ['Intercept', '아이큐', '공부시간', '등급평균']
+#            0                1                  2                    3
+
+print ( variance_inflation_factor( model.exog , 1 ) )    # 아이큐의 팽창계수 확인
+print ( variance_inflation_factor( model.exog , 2 ) )    # 공부시간의 팽창계수 확인
+print ( variance_inflation_factor( model.exog , 3 ) )    # 등급평균의 팽창계수 확인
+
+# 
+22.643552764244085
+2.517786249921231
+19.658263836145316
+
+아이큐와 등급평균의 팽창계수가 10 이상으로 나오고 있어서 이 두개의 독립변수들이
+유의미한 독립변수로 확인되고 있지 않는 것입니다.
+
+문제 269. 등급평균과 공부시간을 독립변수로 하고 시험점수를 종속변수로 해서 모델을
+		  만들고 다중공선성 여부를 확인해보세요 ~
+
+# 1. 데이터를 로드합니다.
+
+import pandas as pd
+test2 = pd.read_csv("c:\\data\\test_vif2.csv", encoding = 'euckr')
+
+# 2. 다중회귀 모델을 만듭니다.
+
+from statsmodels.formula.api import ols
+
+model2 = ols( '시험점수 ~ 등급평균 + 공부시간 ', test2 )
+
+result2 = model2.fit()        # 모델 훈련
+
+# 3. 회귀분석 결과를 확인합니다.
+
+print ( result2.summary() )
+
+print( '결정계수 :', result2.rsquared  )         # 0.9153892458166162
+
+# 4. 팽창계수를 확인합니다.
+
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+print ( model2.exog_names )        # 모델에서 보이는 컬럼명과 순서확인
+								# ['Intercept', '등급평균', '공부시간']
+print ( variance_inflation_factor( model2.exog , 1 ) )    # 등급평균의 팽창계수 확인
+print ( variance_inflation_factor( model2.exog , 2 ) )    # 공부시간의 팽창계수 확인
+
+#
+2.141234365601212
+2.141234365601212
+
+
+▩ 미국민의 의료비를 예측하는 회귀모델을 가지고 새로운 데이터를 예측 ( p288 )
+
+# 1. bmi30 과 bmi30 이면서 smoker yes 인 파생변수를 추가한 회귀모델 생성
+
+insurance <- read.csv("insurance.csv")
+insurance$age2 <- insurance$age^2
+insurance$bmi30 <- ifelse( insurance$bmi >= 30, 1, 0 )
+head(insurance)
+
+model267 <- lm( expenses~. , data = insurance )
+summary(model267)
+
+
+# 2. 위에서 만든 회귀모델로 아래의 사람의 의료비를 예측한다.
+	age : 30 / children : 2 / bmi : 30 / sex : male
+	bmi30 : 1 / smoker = no /  region = northwest
+
+a <- data.frame ( age = 30, age2 = 30^2, children = 2, bmi = 30, sex = 'male', bmi30 = 1, smoker = 'no', region = 'northwest' )
+predict( model267, a )        # 연간 7481.282 달러 정도로 예측된다.
+
+▩ 파이썬으로 다중회귀 분석 구현하기
+
+예제 1. 미국 우주 왕복선 폭파원인 분석
+	     O 형링의 손상이 온도, 압력,비행기 번호 이 3가지 중에 어떤게 영향이 큰지 ?
+	
+# 1. 데이터를 로드합니다.
+
+cha = pd.read_csv("c:\\data\\challenger.csv")
+
+# 2. 다중회귀 모델을 생성합니다.
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'distress_ct ~ temperature + field_check_pressure + flight_num', data = cha )
+
+
+# 3. 다중회귀 모델을 훈련 시킵니다.
+
+result = model.fit()
+
+# 4. 모델의 결과를 분석합니다.
+
+print( result.summary() )
+
+
+
+※ 설명 : 온도, 비행기 번호, 압력순으로 o 형링 파손에 영향을 주고 있습니다.
+		온도가 가장 영향력이 크므로 온도와 o형링 파손수와의 단순 선형 회귀분석을
+		해서 결과분석을 해보겠습니다.
+		
+		" 온도가 몇도일때 우주 왕복선을 발사하는게 좋은지 확인해봅시다. "
+
+
+model2 = smf.ols( formula = 'distress_ct ~ temperature' , data = cha )
+
+result2 = model2.fit()
+print(result2.summary())
+
+
+
+o형링 파손수 = 3.6984 - 0.0475 온도
+
+     2.21개                            31도 F(화씨)
+     0.82개                            60도 F
+     0.34개                            70도 F
+
+※ 분석결과 : 30도에서 발사하는게 화씨 60도에서 발사하는것보다 3배더 위험하고
+			 화씨 70도에서 발사하는것보다 7~8배 더 위험합니다.
+
+### 미국대학교 입학점수에 가장 영향을 크게 미치는 과목이 무엇인지
+		   다중회귀분석 모델을 만들어서 확인하시오 !
+		   ( sports.csv / 종속 : acceptance / 독립 : academic, sports, music )
+
+
+sports = pd.read_csv("c:\\data\\sports.csv")
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'acceptance ~ academic + sports + music', data = sports )
+
+result = model.fit()
+
+print( result.summary() )
+
+
+
+### 위에서는 정규화를 하지 않고 확인했더니 체육점수가 가장 기울기가 컸습니다.
+		   이번에는 정규화하고 수행하세요 ~
+
+sports = pd.read_csv("c:\\data\\sports.csv")
+
+# 정규화
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()                                    # 정규화 모델생성
+scaler.fit( sports )                                              # 훈련데이터를 가지고 정규화 계산
+sports2 = scaler.transform( sports )           
+
+sports3 = pd.DataFrame(sports2)           # 데이터프레임으로 변경
+sports3.columns = sports.columns          # sports3 의 컬럼명을 sports 컬럼명으로 다 변경해줌
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'acceptance ~ academic + sports + music', data = sports3 )
+
+result = model.fit()
+
+print( result.summary() )
+
+   
+
+
+정규화를 했더니 학과점수가 입학점수에 더 영향력이 크게 나오고 있습니다.
+
+종속변수까지 정규화 안했을때의 결과
+
+아카데믹      체육           음악
+46.0623        28.4052     10.7549
+
+종속변수까지 정규화 했을때의 결과
+
+0.4896 /  0.3019 / 0.1143
+
+
+▩ 미국민 의료비 데이터를 파이썬으로 회귀모델 생성하기
+
+데이터셋 : insurance.csv
+종속변수 : expenses
+독립변수 : age, sex, bmi, children, smoker, region
+
+# 1. 데이터를 로드합니다.
+
+insur = pd.read_csv("c:\\data\\insurance.csv")
+
+# 2. 결측치를 확인합니다.
+
+print( insur.isnull().sum() )
+
+# 3. 종속변수의 정규성을 확인합니다.
+
+insur.expenses.plot( kind = 'hist' )
+
+
+
+# 4. 회귀모델을 생성합니다.
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'expenses ~ age + sex + bmi + children + smoker + region', data = insur )
+
+# 5. 모델을 훈련시킵니다.
+
+result = model.fit()
+
+# 6. 분석결과를 확인합니다.
+
+print( result.summary() )
+
+
+
+print(result.params)          # 기울기 쪽만 출력
+
+Intercept                      -11941.562461
+sex[T.male]                  -131.352014        ---------> 남성은 여성에 비해 매년 의료비가 131 달러 적게 들거라 예상
+smoker[T.yes]              23847.476695    ---------> 흡연자는 비흡연자보다 매년 의료비가 23,860 달러 더 많이 든다. 
+region[T.northwest]     -352.790096     -----------> 지역별로는 북동지역이 북서,남동,남서에 비해 의료비가 더든다.
+region[T.southeast]     -1035.595701
+region[T.southwest]     -959.305829
+age                                  256.839171   ---------> 나이가 1년 증가때마다 평균 의료비 256 더든다. 
+bmi                                  339.289863   ----------> 비만지수 1 증가시 의료비 339 더든다
+children                            475.688916  ----------> 부양가족이 1명 늘때마다 475달러 더든
+
+
+### 비만인 사람은 의료비가 더 지출이 되는지 bmi30 이라는 파생변수를 추가하고
+		   다시 모델을 만들어서 결정계수가 올라가는지 확인하시오 !
+		
+insur = pd.read_csv("c:\\data\\insurance.csv")
+
+insur['bmi30'] = (insur['bmi'] >= 30).astype(int)
+
+####### 선생님은 함수만들어서 파생변수 만듬###
+def func_1(x):
+    if x >= 30:
+        return 1
+    else:
+        return 0
+
+insur['bmi30'] = insur['bmi'].apply(func_1)
+
+#############################################
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'expenses ~ age + sex + bmi + children + smoker + region + bmi30', data = insur )
+
+result = model.fit()
+
+print( result.summary() )      # 0.751 ---------> 0.756으로 올라갔습니다.
+
+
+### 비만이면서 흡연까지 하게되면 의료비가 더 증가하는지
+		  bmi30_yes 파생변수를 추가해서 결정계수가 더 올라가는지 확인하시오 !
+
+insur = pd.read_csv("c:\\data\\insurance.csv")
+
+insur['bmi30'] = (insur['bmi'] >= 30).astype(int)
+insur['bmi30_yes'] = ( (insur['bmi'] >= 30) & ( insur['smoker'] == 'yes' ) ).astype(int)
+
+import statsmodels.formula.api as smf
+
+model = smf.ols( formula = 'expenses ~ age + sex + bmi + children + smoker + region + bmi30 + bmi30_yes', data = insur )
+
+result = model.fit()
+
+print( result.summary() )      #  0.756  ---------> 0.864 으로 올라갔습니다.
+
+
+
+
+
+
+
+
+
+
+
+
