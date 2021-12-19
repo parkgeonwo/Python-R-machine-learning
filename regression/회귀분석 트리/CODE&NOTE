@@ -1,0 +1,864 @@
+▩ 회귀트리 ( regression tree ) 
+
+	1. 회귀트리란 ?        수치를 예측하는 트리(tree)
+	
+	머신러닝으로 구현하고자 하는 목표 2가지 ?
+		1. 분류 : knn , naivebayes, decision tree
+		2. 예측 ( 수치 ) : regression
+				ex) 미국민의 의료비 예측
+
+수치예측 작업을 할때에는 일반적으로 전통적인 회귀분석 방법을 가장 먼저 선택하지만
+경우에 따라서는 수치 의사결정트리가 분명한 이점을 제공합니다.
+
+의사결정트리의 장점을 수치예측에 활용할 수 있는데 그 장점이 무엇인가?
+
+	1. 작업의 특징이 많거나 결과간의 매우 복잡하고 비선형적인 관계를 가질때
+	의사결정트리가 잘 맞습니다.
+	예) 독일은행 데이터의 경우에 컬럼이 복잡하게 많았습니다.
+	       정기적금, 예금통장의 금액, 적금을 부은 개월수 ,,,,
+	
+	회귀트리 ----------> 회귀 + 의사결정트리의 장점
+	
+	회귀트리에서 사용하는 수학식 ? SDR( 표준편차축소 )를 사용합니다.
+
+
+
+예제 1. 책 292 페이지의 중간에 나오는 그림인 원본 데이터를 A 속성으로 나누는게 더 나은지
+	      B 속성으로 나누는게 더 나은지 SDR 을 구해서 알아내시오. 어떤게 더 잘 균일하게 나눈건지 확인
+			
+		
+# 1. 원본 데이터를 만든다.
+
+tee <- c( 1,1,1,2,2,3,4,5,5,6,6,7,7,7,7 )
+
+# 2. 원본 데이터를 A 속성으로 나누었을때의 데이터
+
+at1 <- c( 1,1,1,2,2,3,4,5,5 )
+at2 <- c( 6,6,7,7,7,7 )
+
+# 3. 원본 데이터를 B 속성으로 나누었을때의 데이터
+
+bt1 <- c( 1,1,1,2,2,3,4 )
+bt2 <- c( 5,5,6,6,7,7,7,7 )
+
+# 4. A 속성으로 나누었을때의 SDR ( 표준편차축소값 ) 을 구한다.
+
+sdr_a <- sd(tee) - ( length(at1) / length(tee) * sd(at1) + length(at2) / length(tee) * sd(at2) )
+sdr_a          # [1] 1.202815
+
+# 5. B 속성으로 나누었을때의 SDR ( 표준편차축소값 ) 을 구한다.
+
+sdr_b <- sd(tee) - ( length(bt1) / length(tee) * sd(bt1) + length(bt2) / length(tee) * sd(bt2) )
+sdr_b       # [1] 1.392751
+
+
+# 6. 둘중에 SDR 이 높은것으로 분류한다.
+
+둘중에 B 속성으로 나는 SDR 값이 더 높았다.
+
+# 7. B 속성으로 분류한 원본 데이터의 두 영역의 평균값을 각각 구해서 등급을 예측한다.
+
+bt1 <- c( 1,1,1,2,2,3,4 )
+bt2 <- c( 5,5,6,6,7,7,7,7 )
+
+mean(bt1)         # 2
+mean(bt2)         # 6.25
+
+※ 정리 : x 값 ( 속성, 명목형 데이터 ) 을 고려하지 않고 y값 ( 수치 )만 가지고 데이터를 분할하는데
+		표준편차축소값이 가장 높은 값을 기준으로 y 값을 분할하고 각각의 영역의 평균값을
+		예측값으로 지정합니다.
+
+▩ 책 292 p 에 나온 내용을 파이썬으로 구현하기 
+
+# 1. 원본 데이터를 만든다.
+
+tee = [ 1,1,1,2,2,3,4,5,5,6,6,7,7,7,7 ]
+
+# 2. 원본 데이터를 A 속성으로 나누었을때의 데이터
+
+at1 = [ 1,1,1,2,2,3,4,5,5 ]
+at2 = [ 6,6,7,7,7,7 ]
+
+# 3. 원본 데이터를 B 속성으로 나누었을때의 데이터
+
+bt1 = [ 1,1,1,2,2,3,4 ]
+bt2 = [ 5,5,6,6,7,7,7,7 ]
+
+# 4. A 속성으로 나누었을때의 SDR ( 표준편차축소값 ) 을 구한다.
+
+import numpy as np
+
+sdr_a = np.std(tee, ddof = 1) - ( len(at1) / len(tee) * np.std(at1, ddof = 1) + len(at2) / len(tee) * np.std(at2, ddof = 1) )
+print( sdr_a )         # [1] 1.202815
+
+   *ddof 는 델타 자유도 입니다. 이 값은 기본적으로 0 입니다. 
+     자유도를 1을주면 표본으로 계산 , 0 이면 모집단으로 계산
+
+
+# 5. B 속성으로 나누었을때의 SDR ( 표준편차축소값 ) 을 구한다.
+
+sdr_b = np.std(tee, ddof = 1) - ( len(bt1) / len(tee) * np.std(bt1, ddof = 1) + len(bt2) / len(tee) * np.std(bt2, ddof = 1) )
+print ( sdr_b )      # [1] 1.392751
+
+# 6. 둘중에 SDR 이 높은것으로 분류한다.
+
+둘중에 B 속성으로 나는 SDR 값이 더 높았다.
+
+# 7. B 속성으로 분류한 원본 데이터의 두 영역의 평균값을 각각 구해서 등급을 예측한다.
+
+bt1 = [ 1,1,1,2,2,3,4 ]
+bt2 = [ 5,5,6,6,7,7,7,7 ]
+
+print ( np.mean(bt1) )        # 2
+print ( np.mean(bt2)  )       # 6.25
+
+▩ 다음의 데이터 프레임을 만들고 아래의 3개의 속성중 parttern, outline, dot 중에
+     어느 속성으로 area 를 나눈게 더 좋은지 실험하기
+
+					
+
+# 1. 아래의 데이터 프레임을 판다스로 구현한다.
+
+dic = { 'Pattern' : [ '수직', '수직', '대각선', '수평','수평','수평','수직','수직','대각선','수평','수직','대각선','대각선','수평'],
+'Outline' : ['점선', '점선','점선','점선','실선','실선','실선', '점선', '실선','실선','실선','점선','실선','점선'],
+'Dot' : ['무', '유','무','무','무','유','무','무','유','무','유','유','무','유'],
+'area' : [25,30,46,45,52,23,43,35,38,46,48,52,44,30] }
+
+df = pd.DataFrame(dic)
+print(df)
+
+# 2. pattern 속성으로 area를 나누었을 때의 SDR 을 구하시오 !
+
+pat1 = list ( df.loc[ df['Pattern'] == '수직', 'area' ] )
+pat2 = list ( df.loc[ df['Pattern'] == '수평', 'area' ] )
+pat3 = list ( df.loc[ df['Pattern'] == '대각선', 'area' ] )
+list_df = list(df['area'] )
+
+sdr_pat = np.std( list_df, ddof = 1) - ( len(pat1) / len( list_df ) * np.std(pat1, ddof = 1) 
+									+ len(pat2) / len( list_df ) * np.std(pat2, ddof = 1)
+									+ len(pat3) / len( list_df ) * np.std(pat3, ddof = 1) )
+print( sdr_pat )         #  0.338370410662689
+
+# 3. outline 속성으로 area를 나누었을 때의 SDR 을 구하시오 !
+
+out1 = list ( df.loc[ df['Outline'] == '점선', 'area' ] )
+out2 = list ( df.loc[ df['Outline'] == '실선', 'area' ] )
+
+list_df = list(df['area'] )
+
+sdr_out = np.std( list_df, ddof = 1) - ( len(out1) / len( list_df ) * np.std(out1, ddof = 1) 
+									+ len(out2) / len( list_df ) * np.std(out2, ddof = 1) )
+									
+print( sdr_out )         #  -0.10086200041392779
+
+# 4. dof 속성으로 area를 나누었을 때의 SDR 을 구하시오 !
+
+dot1 = list ( df.loc[ df['Dot'] == '유', 'area' ] )
+dot2 = list ( df.loc[ df['Dot'] == '무', 'area' ] )
+
+list_df = list(df['area'] )
+
+sdr_dot = np.std( list_df, ddof = 1) - ( len(dot1) / len( list_df ) * np.std(dot1, ddof = 1) 
+									+ len(dot2) / len( list_df ) * np.std(dot2, ddof = 1) )
+print( sdr_dot )         #  0.06950728283727692
+
+
+################# 내가 만든 함수 #############
+
+def SDF_cal(df):
+    label_name = input('라벨컬럼의 이름을 입력하세요 : ')
+
+    list_df = list(df[label_name] )
+    val1 = np.std( list_df, ddof = 1)
+
+    list_df2 = list(df.columns)
+    list_df2.remove(label_name)
+
+    for i in list_df2:
+        temp = df[i].unique()
+        temp_val = 0
+        for j in temp:
+            temp_val += len( list ( df.loc[ df[i] == j, label_name] ) ) / len( list_df ) * np.std(list ( df.loc[ df[i] == j, label_name ] ), ddof = 1)
+        print(i , '의 SDR 값은', val1 - temp_val)
+ 
+dic = { 'Pattern' : [ '수직', '수직', '대각선', '수평','수평','수평','수직','수직','대각선','수평','수직','대각선','대각선','수평'],
+'Outline' : ['점선', '점선','점선','점선','실선','실선','실선', '점선', '실선','실선','실선','점선','실선','점선'],
+'Dot' : ['무', '유','무','무','무','유','무','무','유','무','유','유','무','유'],
+'area' : [25,30,46,45,52,23,43,35,38,46,48,52,44,30] }
+
+df = pd.DataFrame(dic)
+SDF_cal(df)
+
+
+▩ 와인 데이터의 등급 ( 수치 ) 를 예측하는 회귀트리 모델을 생성하는 실습 
+	( whitewines.csv )
+
+# 1. 데이터를 로드합니다.
+
+wine <- read.csv('whitewines.csv')
+head(wine)
+
+#fixed.acidity       : 고정 산도
+#volatile.acidity    : 휘발성 산도
+#citric.acid         : 시트르산
+#residual.sugar      : 잔류 설탕
+#chlorides           : 염화물
+#free.sulfur.dioxide : 자유 이산화황
+#total.sulfur.dioxide: 총 이산화황
+#density             : 밀도
+#pH                  : pH
+#sulphates           : 황산염
+#alcohol             : 알코올
+#quality             : 품질 <------------ 종속변수 입니다.
+
+
+
+# 2. 종속변수인 quality 가 정규분포에 속하는지 확인합니다.
+
+hist(wine$quality)
+설명 : 어느 한쪽으로 데이터가 치우치지 않은 안정적인 모양을 보이고 있습니다.
+
+
+
+
+# 3. 결측치가 있는지 확인합니다.
+
+colSums(is.na(wine))
+
+# 4. 훈련 데이터와 테스트 데이터로 데이터를 분리 합니다.
+
+library(caret)
+set.seed(1)
+train_num <- createDataPartition( wine$quality , p = 0.9, list = F )
+train_data <- wine[ train_num,  ]
+test_data <- wine[ -train_num,  ]
+
+nrow(train_data)        # 4409
+nrow(test_data)          # 489
+
+# 5. 훈련 데이터로 모델을 생성합니다.
+
+install.packages("rpart")
+library(rpart)
+
+model <- rpart( quality ~. , data = train_data )
+model
+
+ 1) root 4409 3430.35200 5.877977  
+   2) alcohol< 10.85 2769 1642.60700 5.603467  
+     4) volatile.acidity>=0.2525 1449  697.05730 5.363009 *
+     5) volatile.acidity< 0.2525 1320  769.79920 5.867424  
+      10) volatile.acidity>=0.2075 656  325.38870 5.708841 *
+      11) volatile.acidity< 0.2075 664  411.61450 6.024096  
+        22) residual.sugar< 12.65 530  294.09250 5.903774 *
+        23) residual.sugar>=12.65 134   79.50000 6.500000 *
+   3) alcohol>=10.85 1640 1226.78000 6.341463  
+     6) free.sulfur.dioxide< 10.5 89   98.76404 5.370787 *
+     7) free.sulfur.dioxide>=10.5 1551 1039.34800 6.397163  
+      14) alcohol< 11.74167 752  482.56250 6.187500 *
+      15) alcohol>=11.74167 799  492.61580 6.594493 *
+
+
+※ 설명 : * 표시가 있는 노드는 앞노드로 노드에서 예측이 이루어진다는 것을 의미합니다.
+		와인 데이터의 예측 등급입니다.
+		
+		quality 5.9 입노드로 예를 들면 alcohol< 10.85 이고 volatile.acidity>=0.2525 이면서
+		volatile.acidity < 0.2075 고  residual.sugar< 12.65 이면 이 와인의 quality 는 5.9로 예상됩니다.
+		quality 가 3~9 등급 사이로 구성되어져 있다.
+
+# 6. 생성된 모델을 시각화 합니다.
+
+install.packages("rpart.plot")
+library(rpart.plot)
+
+rpart.plot(model, digits = 3)
+
+※ 설명 : digits = 3 은 소수점 세번째까지 허용하겠다는 뜻
+
+
+
+
+# 7. 훈련된 모델로 테스트 데이터를 예측합니다.
+
+result <- predict( model , test_data[ , -12 ] )
+result
+
+# 8. 예측값과 실제값의 상관계수를 구하여 모델의 성능을 평가합니다.
+
+cor( result , test_data[ , 12 ] )          # 0.51
+
+# 9. 예측값과 실제값의 오차율을 확인하여 모델의 성능을 평가합니다.
+
+mae <- function( actual, predicted ) { mean( abs( actual - predicted ) ) } 
+	# 실제값에서 예측값을 뺸 절대값들의 평균 = 오차
+
+mae( result, test_data[ , 12 ] )     # 0.64
+
+상관계수는 1에 가까워야하고 오차는 0에 가까워야 좋은 모델이다.
+
+※ 설명 : 이 모델의 경우 다른 모델인 서포트 벡터 머신에서는 오차가 0.45인데 
+		0.64 이면 상대적으로 큰 오차이므로 개선의 여지가 필요해 보입니다.
+		
+개선 방법 : 회귀트리 -------------> 모델트리
+
+▩ 모델트리
+
+
+기존회귀 트리 모델 + 다중회귀를 추가한 모델
+
+회귀트리는 무조건 분할한 y ( 종속변수의 값들 ) 값들의 평균값으로만 예측을 했는데
+모델트리는 분할한 x 값과 y 값들에 대한 회귀식을 통해서 y 값을 예측합니다.
+
+# 1. 데이터를 로드합니다.
+wine <- read.csv("whitewines.csv")
+
+# 2. 와인 데이터 종속변수의 분포를 확인합니다.
+hist(wine$quality)
+
+# 3. 와인 데이터를 훈련과 테스트로 분리합니다.
+
+library(caret)
+set.seed(1)
+train_num <- createDataPartition( wine$quality , p = 0.9, list = F )
+train_data <- wine[ train_num,  ]
+test_data <- wine[ -train_num,  ]
+
+nrow(train_data)        # 4409
+nrow(test_data)          # 489
+
+# 4. 모델트리를 구현하기 위한 패키지를 설치
+
+install.packages("Cubist")
+library(Cubist)
+
+# 5. 와인의 품질을 예측하는 모델을 생성합니다.
+
+model2 <- cubist( x = train_data[  , -12 ], y = train_data[  , 12 ] )
+model2
+
+# 6. 만든 모델로 테스트 데이터를 예측합니다.
+
+result2 <- predict( model2, test_data[  , -12 ] )
+result2
+
+# 7. 실제값과 예측값간의 상관계수와 오차를 확인합니다.
+
+cor ( result2 , test_data[  , 12 ] )      # 0.5954519
+
+mae( result2 , test_data[  ,12 ] )    # 0.573
+
+※ 설명 : 회귀트리일때는 오차가 0.64 였는데 0.57이면 많이 개선되었습니다.
+
+
+####################################################################################################
+
+▩ 위의 회귀트리를 파이썬으로 구현하기
+
+수치예측하는 의사결정트리를 이용하면 됩니다.
+
+# 1. 데이터를 로드합니다.
+
+import pandas as pd
+wine = pd.read_csv("c:\\data\\whitewines.csv")
+
+# 2. 결측치를 확인합니다.
+
+print( wine.isnull().sum() )
+
+# 3. 종속변수의 정규성을 확인합니다.
+
+wine['quality'].plot(kind = 'hist')
+
+# 4. 훈련데이터와 테스트데이터를 분리합니다.
+
+from sklearn.model_selection import train_test_split
+
+x = wine.iloc[ :, :-1 ].to_numpy()
+y = wine.iloc[ :, -1  ].to_numpy()
+
+x_train, x_test, y_train, y_test = train_test_split ( x, y, test_size = 0.1 , random_state = 1 )
+
+print(x_train.shape )     # 4408, 11
+print(x_test.shape )       # 490, 11
+print(y_train.shape )     # 4408,
+print(y_test.shape )       # 490,
+
+# 5. 모델을 생성합니다.
+
+from sklearn.tree import DecisionTreeRegressor
+
+model = DecisionTreeRegressor( random_state = 1 )
+
+# 6. 모델 훈련
+
+model.fit( x_train, y_train )
+
+# 7. 모델 예측
+
+result = model.predict( x_test )
+
+# 8. 실제값과 예측값간의 상관계수와 오차를 확인합니다.
+
+import numpy as np
+
+print ( np.corrcoef( result, y_test ) )          # 0.58180875
+
+def mae( x, y ):
+    return np.mean( abs( x-y ) )
+
+print(  mae( result, y_test )  )      # 0.47551020408163264
+
+※ 설명 : 의사결정트리 회귀모델로 수치예측결과 상관계수는 0.58 , 오차는 0.47로 출력되었다.
+		위의 수치예측 모델의 성능을 올리시오 !
+		
+from sklearn.tree import DecisionTreeRegressor
+				↓
+from sklearn.ensemble import RandomForestRegressor
+
+### RandomForestRegressor 로 변경해서 수치예측하고 상관계수와 오차를 확인하시오 !
+
+from sklearn.ensemble import RandomForestRegressor
+
+model = RandomForestRegressor( random_state = 1 )
+
+model.fit( x_train, y_train )
+
+result = model.predict( x_test )
+
+import numpy as np
+
+print ( np.corrcoef( result, y_test ) )          # 0.71178998
+
+def mae( x, y ):
+    return np.mean( abs( x-y ) )
+
+print(  mae( result, y_test )  )      # 0.43489795918367347
+
+※ 6장에서 배운 내용 ?
+	1. 단순회귀 분석
+	2. 다중회귀 분석
+	3. 회귀트리
+	4. 모델트리
+
+▩ 보스톤 집값 ( 수치 ) 데이터를 예측하는 회귀 모델을 만드시오 !
+
+3가지를 해볼것이다.
+
+	1. 다중회귀 모델
+	from sklearn.linear_model import LinearRegression
+	
+	2. 의사결정트리 회귀모델
+	from sklearn.tree import DecisionTreeRegressor
+	
+	3. 랜덤포레스트 회귀모델
+	from sklearn.ensemble import RandomForestRegressor
+
+▩ 보스톤 집값 예측 회귀모델 만들기
+
+# 1. 데이터를 로드합니다.
+boston = pd.read_csv("c:\\data\\boston.csv")
+
+# 2. 결측치를 확인합니다.
+print( boston.isnull().sum() )
+
+# 3. 종속변수가 정규성을 띄는지 확인합니다.
+
+boston['price'].plot(kind = 'hist')
+
+
+# 예쁜 데이터네
+
+# 4. 훈련 데이터와 테스트 데이터로 분리합니다.
+
+from sklearn.model_selection import train_test_split
+
+x = boston.iloc[ :, :-1 ].to_numpy()
+y = boston['price'].to_numpy()
+
+x_train, x_test, y_train, y_test = train_test_split ( x, y , test_size = 0.1, random_state = 1 )
+
+print(x_train.shape )     # 455, 14
+print(x_test.shape )       # 51, 14
+print(y_train.shape )     # 455,
+print(y_test.shape )       # 51,
+
+# 5. 회귀 모델을 생성합니다.
+
+from sklearn.linear_model import LinearRegression
+model = LinearRegression( )
+
+# 6. 모델을 훈련 시킵니다.
+
+model.fit( x_train, y_train )
+
+# 7. 테스트 데이터를 예측합니다.
+
+result = model.predict(x_test)
+
+# 8. 실제값과 예측값의 상관계수와 오차를 확인합니다.
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.88804528
+print( mae( result, y_test ) )             # 3.746810336863804
+
+### LinearRegression 을 DecisionTreeRegressor 로 바꿔서 해보세요 !
+
+from sklearn.tree import DecisionTreeRegressor
+model = DecisionTreeRegressor( )
+
+model.fit( x_train, y_train )
+
+result = model.predict(x_test)
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.92995453
+print( mae( result, y_test ) )             # 2.588235294117647
+
+*
+LinearRegression 는 상관계수가 0.888 , 오차가 3.74 입니다.
+DecisionTreeRegressor 는 상관계수가 0.9299 , 오차가 2.588 입니다.
+
+
+### RandomForestRegressor 로 바꿔서 해보세요 !
+
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor( random_state = 1 )
+
+model.fit( x_train, y_train )
+
+result = model.predict(x_test)
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.96688151
+print( mae( result, y_test ) )             # 1.927784313725491
+
+*
+RandomForestRegressor 는 상관계수가 0.966 , 오차가 1.9277 입니다.
+
+▩ 오라클에서 SQL 로 바로 회귀분석을 구현하는 방법
+
+	1. 회사의 중요한 데이터는 다 오라클과 같은 RDBMS에 저장되어 있습니다.
+
+	2. 오라클과 파이썬 또는 R 과 연동해서 회귀분석을 하는 경우가 많은데
+	연동하지 않고 바로 오라클의 회귀분석 패키지를 이용해서 분석을 하게 되면
+	장점이 오라클의 자동 SQL 튜닝 기능을 이용할 수 있습니다.
+	
+	3. 대용량 데이터를 파이썬이나 R 로 회귀분석을 하다보면 아주 큰 대용량 데이터인
+	경우에는 모래시계가 뜨면서 분석시간이 상당히 오래걸리거나 메모리 부족 오류가 나면서
+	분석을 못할 수 있다.
+	
+코드 긁어오기 = 예제_193.txt / 예제_194.txt
+데이터 = insurance.csv / student_score.csv
+
+SQL developer 키세요 !!
+
+--■ 예제_193 SQL로 머신러닝 구현하기15(REGRESSION)
+
+-- 1.  학생점수 테이블을 생성합니다.
+
+DROP TABLE STUDENT_SCORE;
+
+CREATE TABLE STUDENT_SCORE
+(  ST_ID        NUMBER(10),
+  ACADEMIC   NUMBER(20,8),
+  SPORTS      NUMBER(30,10),
+  MUSIC       NUMBER(30,10),
+ ACCEPTANCE  NUMBER(30,10) );
+
+-- 데이터 입력: SQL Developer를 이용해서 student_score.csv 를 STUDENT_SCORE 테이블에 입력합니다. ( 데이터 임포트 , 오른쪽 마우스 )
+
+select count(*) from STUDENT_SCORE;
+-- 200 
+
+-- 2. 훈련 데이터와 테스트 데이터로 분리합니다. 
+
+-- 180건은 훈련 테이블로 구성
+
+DROP TABLE STUDENT_SCORE_TRAINING; 
+
+CREATE TABLE STUDENT_SCORE_TRAINING
+AS
+   SELECT *
+     FROM STUDENT_SCORE
+     WHERE ST_ID < 181;
+
+-- 20건은 테스트 테이블로 구성
+
+DROP TABLE STUDENT_SCORE_TEST;
+
+CREATE TABLE STUDENT_SCORE_TEST
+AS
+   SELECT *
+     FROM STUDENT_SCORE
+     WHERE ST_ID >= 181;
+
+select count(*) from STUDENT_SCORE_TRAINING;
+select count(*) from STUDENT_SCORE_TEST;
+
+-- 3. 회귀 분석을 위한 머신러닝 모델 구성 테이블을 생성합니다. 
+
+아래의 테이블에 회귀분석 환경에 대한 설정이름과 설정내용이 저장이 된다.
+
+DROP TABLE SETTINGS_REG1;
+
+CREATE TABLE SETTINGS_REG1
+AS
+SELECT *
+     FROM TABLE (DBMS_DATA_MINING.GET_DEFAULT_SETTINGS)
+     WHERE SETTING_NAME LIKE '%GLM%';
+
+-- 위에서 만들었던 머신러닝 환경 셋팅 테이블에 지금부터 회귀분석하겠다는 내용을 저장한다. ( 회귀분석 하겠다  =       )
+---- PREP_SCALE_RANGE 데이터를 알아서 표준화해서 회귀분석 해라
+
+BEGIN
+
+INSERT INTO SETTINGS_REG1
+  VALUES (DBMS_DATA_MINING.ALGO_NAME, 'ALGO_GENERALIZED_LINEAR_MODEL');
+
+INSERT INTO SETTINGS_REG1
+  VALUES (DBMS_DATA_MINING.PREP_SCALE_2DNUM, 'PREP_SCALE_RANGE');
+
+COMMIT;
+
+END;
+/
+	• BEGIN , END는 굳이 안해도되는데 그냥 편하게하려 넣어준것
+
+-- 4.  회귀 모델을 생성합니다. 
+
+-- 혹시 기존에 회귀모델 MD_REG_MODEL1 이 있으면 DROP 해라 ~
+
+BEGIN
+ DBMS_DATA_MINING.DROP_MODEL('MD_REG_MODEL1');
+END;
+/
+
+-- DROP 할거 없으면 여기부터
+
+BEGIN 
+   DBMS_DATA_MINING.CREATE_MODEL(
+      MODEL_NAME            => 'MD_REG_MODEL1',
+      MINING_FUNCTION       => DBMS_DATA_MINING.REGRESSION,
+      DATA_TABLE_NAME       => 'STUDENT_SCORE_TRAINING',
+      CASE_ID_COLUMN_NAME   => 'ST_ID',
+      TARGET_COLUMN_NAME    => 'ACCEPTANCE',
+      SETTINGS_TABLE_NAME   => 'SETTINGS_REG1');
+END;
+/
+
+
+-- 5. 모델 생성 여부를 확인합니다.
+
+SELECT MODEL_NAME,
+          ALGORITHM,
+          MINING_FUNCTION
+  FROM ALL_MINING_MODELS
+  WHERE MODEL_NAME = 'MD_REG_MODEL1';
+
+
+-- 6. 모델 구성 정보를 확인합니다.
+
+SELECT SETTING_NAME, SETTING_VALUE
+  FROM ALL_MINING_MODEL_SETTINGS
+  WHERE MODEL_NAME = 'MD_REG_MODEL1';
+
+
+-- 7. 테스트 데이터에 대해 회귀분석 모델이 예측한 예측점수를 확인합니다. 
+
+SELECT ST_ID 학생번호, ACADEMIC 학과점수, ROUND(MUSIC,2) 음악점수 , 
+          SPORTS 체육점수, ROUND(ACCEPTANCE,2) AS 실제점수, ROUND(MODEL_PREDICT_RESPONSE,2) AS 예측점수
+ FROM ( 
+           SELECT T.*, PREDICTION (MD_REG_MODEL1 USING *) MODEL_PREDICT_RESPONSE
+             FROM STUDENT_SCORE_TEST T
+      );
+
+
+-- 8. 회귀 모델의 결정계수 R 스퀘어 값을 확인합니다. 
+
+
+SELECT *
+  FROM TABLE(DBMS_DATA_MINING.GET_MODEL_DETAILS_GLOBAL(MODEL_NAME =>  'MD_REG_MODEL1'))
+  WHERE GLOBAL_DETAIL_NAME IN ('R_SQ','ADJUSTED_R_SQUARE');
+
+
+
+-- 9. 입학점수에 영향력 있는 변수가 무엇인지 확인합니다. 
+
+SELECT ATTRIBUTE_NAME, COEFFICIENT
+  FROM TABLE (DBMS_DATA_MINING.GET_MODEL_DETAILS_GLM ('MD_REG_MODEL1'));
+
+
+기울기값 나옴 ( 영향력 )
+
+
+>>> 다 그대로 두고 모델만드는 부분에서 테이블 명만 바꿔서 넣어주면 쉽게 적용할 수 있다.
+
+### 위의 미국 입학점수 예측 모델이 예측한 결과값과 실제값과의 상관계수를 출력하시오 !
+
+select corr(sal,comm)
+from;
+
+
+SELECT corr( ROUND(ACCEPTANCE,2) , ROUND(MODEL_PREDICT_RESPONSE,2) )
+ FROM ( 
+           SELECT T.*, PREDICTION (MD_REG_MODEL1 USING *) MODEL_PREDICT_RESPONSE
+             FROM STUDENT_SCORE_TEST T
+      );
+
+>>> 0.9771860426962691475641713976994838921189
+
+
+### 지금 방금 SQL로 회귀분석한 미국 입학데이터 ( student_score.csv )를 가지고
+		   파이썬으로 위와 같이 회귀분석해서 오라클의 상관계수가 값이 0.9771 을 능가할 수 있는지
+		   실험하시오 !
+
+
+# 1. 데이터를 로드합니다.
+score = pd.read_csv("c:\\data\\student_score.csv")
+
+# 2. 결측치를 확인합니다.
+print( score.isnull().sum() )         # 0
+
+# 3. 종속변수가 정규성을 띄는지 확인합니다.
+
+score['acceptance'].plot(kind = 'hist')
+
+
+# 예쁜 데이터네
+
+# 4. 훈련 데이터와 테스트 데이터로 분리합니다.
+
+from sklearn.model_selection import train_test_split
+
+x = score.iloc[ :, 1:-1 ].to_numpy()
+y = score['acceptance'].to_numpy()
+
+x_train, x_test, y_train, y_test = train_test_split ( x, y , test_size = 0.1, random_state = 1 )
+
+print(x_train.shape )     # 180, 3
+print(x_test.shape )       # 20, 3
+print(y_train.shape )     # 180,
+print(y_test.shape )       # 20,
+
+# 5. 회귀 모델을 생성합니다.
+
+from sklearn.linear_model import LinearRegression
+model = LinearRegression( )
+
+# 6. 모델을 훈련 시킵니다.
+
+model.fit( x_train, y_train )
+
+# 7. 테스트 데이터를 예측합니다.
+
+result = model.predict(x_test)
+
+# 8. 실제값과 예측값의 상관계수와 오차를 확인합니다.
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.93569639
+print( mae( result, y_test ) )             # 4.069033970273358
+
+# LinearRegression 을 DecisionTreeRegressor 로 
+
+from sklearn.tree import DecisionTreeRegressor
+model = DecisionTreeRegressor( )
+
+model.fit( x_train, y_train )
+
+result = model.predict(x_test)
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.82179408
+print( mae( result, y_test ) )             # 4.444444445000001
+
+# RandomForestRegressor 로 바꿔서 
+
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor( random_state = 1 )
+
+model.fit( x_train, y_train )
+
+result = model.predict(x_test)
+
+import numpy as np
+
+print( np.corrcoef( result, y_test ) )         # 0.86500547
+print( mae( result, y_test ) )             # 3.8472222210240004
+
+
+결과 :
+LinearRegression 는 상관계수가 0.936 , 오차가 4.072 입니다.
+DecisionTreeRegressor 는 상관계수가 0.817 , 오차가 4.296 입니다.
+RandomForestRegressor 는 상관계수가 0.8531 , 오차가 3.997 입니다.
+
+
+
+
+*score 를 정규화해서 # 3번 이후에 아래 코드를 넣어줘도 결과는 비슷했다.
+
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()                                    # 정규화 모델생성
+scaler.fit( score )                                              # 훈련데이터를 가지고 정규화 계산
+score2 = scaler.transform( score )           
+
+score3 = pd.DataFrame(score2)           # 데이터프레임으로 변경
+score3.columns = score.columns          # score3 의 컬럼명을 score 컬럼명으로 다 변경해줌
+
+
+######### 더 보기 쉽고 좋게 만들어보자 ###############
+
+score = pd.read_csv("c:\\data\\student_score.csv")
+
+from sklearn.model_selection import train_test_split
+
+x = score.iloc[ :, 1:-1 ].to_numpy()
+y = score['acceptance'].to_numpy()
+
+val_list = []
+val_list2 = []
+
+for i in range(1,31):
+    x_train, x_test, y_train, y_test = train_test_split ( x, y , test_size = 0.1, random_state = i )
+
+    from sklearn.linear_model import LinearRegression
+    model = LinearRegression( )
+
+    model.fit( x_train, y_train )
+
+    result = model.predict(x_test)
+
+    import numpy as np
+
+    val_list.append( np.corrcoef( result, y_test )[0,1] )         
+    val_list2.append( mae( result, y_test ) )             
+    
+index_num = val_list.index(max(val_list)) + 1
+
+print( 'random_state가',index_num,'일 때, 상관계수가',round( max(val_list),4 ),'이며, 오차는', round( val_list2[index_num -1],4 ),'입니다.' )
+
+
+# LinearRegression 을 DecisionTreeRegressor 로 
+
+from sklearn.tree import DecisionTreeRegressor
+model = DecisionTreeRegressor( )
+
+# RandomForestRegressor 로 바꿔서 
+
+from sklearn.ensemble import RandomForestRegressor
+model = RandomForestRegressor( random_state = 1 )
+
+
+결과 :
+
+LinearRegression
+random_state가 21 일 때, 상관계수가 0.9784 이며, 오차는 3.5934 입니다.
+DecisionTreeRegressor
+random_state가 28 일 때, 상관계수가 0.9961 이며, 오차는 1.4259 입니다.
+RandomForestRegressor
+random_state가 5 일 때, 상관계수가 0.9948 이며, 오차는 1.7087 입니다.
