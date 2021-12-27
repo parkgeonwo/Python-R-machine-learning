@@ -18,7 +18,7 @@
 - Association rule
 - k-means
 - Model performance estimation
-- Ensemble / Bagging / Boosting / Random forest 
+- performance improvement ( Ensemble / Bagging / Boosting / Random forest / k-fold )
 
 
 
