@@ -19,6 +19,7 @@
 - k-means
 - Model performance estimation
 - performance improvement ( Ensemble / Bagging / Boosting / Random forest / k-fold )
+- SVM
 
 
 
